@@ -104,14 +104,24 @@ def LTB_E(r):
 	2E(r) \equiv -k(r) in http://arxiv.org/abs/0802.1523
 	[LTB_E] is dimensionless
 	"""
+	# Since a gauge condition is used i.e. R(t0,r) =r the expression 
+	#below is always true 
 	return_me = r**2.*( H0overc(r)**2 - 2.*LTB_M(r)/r**3 - Lambda/3. )/2.
+	#the above should produce the same result as the expression used for 
+	# k(r) in the paper given below. uncomment and use either one.
+	#return_me = -0.5*H0overc(r)**2*(Omega_M(r)-1.)*r**2
 	return return_me
 
 def dLTB_E_dr(r):
 	"""
 	[dLTB_E_dr]=Mpc^-1
+	Note:
+	     See LTB_E(r) for the two choices given below
 	"""
 	return_me = 2.*LTB_E(r)/r + r**2 * (H0overc(r)*d_H0overc_dr(r) - dLTB_M_dr(r)/r**3 + 3.*LTB_M(r)/r**4)
+	#return_me = -d_H0overc_dr(r)*H0overc(r)*(Omega_M(r)-1.)*r**2 \
+	#            -0.5*H0overc(r)**2*d_Omega_M_dr(r)*r**2 \
+	#            -H0overc(r)**2*(Omega_M(r)-1.)*r
 	return return_me
 
 
@@ -178,10 +188,10 @@ print "so what now"
 #factor = 0.5
 #LTB_geodesics_model0(rp=1.,tp=17.*ageMpc,ktp=-1.,alpha=np.pi*factor)
 #LTB_geodesics_model0 =  LTB_geodesics(R_spline=spR,Rdot_spline=spRdot,Rdash_spline=spRdash,Rdashdot_spline=spRdashdot)
-for factor in np.linspace(0.,2,20,endpoint=False):
+for factor in np.linspace(0.,2,21,endpoint=False):
 	#LTB_geodesics_model0 =  LTB_geodesics(R_spline=spR,Rdot_spline=spRdot,Rdash_spline=spRdash,Rdashdot_spline=spRdashdot)
 	from scipy.optimize import brentq
-	loc = 0.5*Gpc
+	loc = 2.5*Gpc
 	age, junk = brentq(f=fsolve_LTB_age,a=1e-4,b=30.*ageMpc,args=(loc,),disp=True,full_output=True)
 	print "factor and age ", factor, age, loc, junk.converged
 	LTB_geodesics_model0(rp=loc,tp=age,ktp=1.,alpha=np.pi*factor)

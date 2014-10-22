@@ -199,14 +199,22 @@ class LTB_geodesics():
 		``Structures in the Universe by Exact Method`` by Krzystof Bolejko etal.
 		Rps:
 		    denotes R_p * sin(alpha) = R_p(t_p, r_p) * sin(alpha)
-		ktp: k^t_p which is set to 1 or -1    
+		ktp: 
+		    k^t_p which is set to 1 or -1 is the measured energy of the photon
+		    at the observer position. It is set to one because its magnitude does 
+		    not matter, only its fractional change matters.    
+		caution: 
+		        In general avoid alpha=pi/2 and 3/2*pi which means the light would
+		        be travelling perpendicular to the axis joining the observer and 
+		        the center of symmetry.
 		"""
 		dy_dt = np.empty_like(y)
 		
-		R        = self.R(y[self.i_t],y[self.i_r])
-		Rdot     = self.Rdot(y[self.i_t],y[self.i_r])
-		Rdash    = self.Rdash(y[self.i_t],y[self.i_r]) 
-		Rdashdot = self.Rdashdot(y[self.i_t],y[self.i_r])
+		R        = self.R.ev(y[self.i_r],y[self.i_t])
+		Rdot     = self.Rdot.ev(y[self.i_r],y[self.i_t])
+		Rdash    = self.Rdash.ev(y[self.i_r],y[self.i_t])
+		Rdashdot = self.Rdashdot.ev(y[self.i_r],y[self.i_t])
+######## Get get all derivative from R but is slower!. uncomment below
 #		R        = self.R.ev(y[self.i_r],y[self.i_t])
 #		Rdot     = self.R.ev(y[self.i_r],y[self.i_t],dy=1)
 #		Rdash    = self.R.ev(y[self.i_r],y[self.i_t],dx=1)
@@ -226,11 +234,11 @@ class LTB_geodesics():
 		y_init = np.zeros(4)
 		y_init[0]=0.; y_init[1]=tp; y_init[2]=rp; y_init[3]=ktp
 		sign = None
-		if (0.<= alpha < np.pi/2 or 3./2.*np.pi < alpha <= 2.*np.pi):
-			sign = 1.
-		else:
-			sign = -1.
-		#sign = -1.
+		#if (0.<= alpha < np.pi/2 or 3./2.*np.pi < alpha <= 2.*np.pi):
+		#	sign = 1.
+		#else:
+		#	sign = -1.
+		sign = -1.
 		Rps = np.sin(alpha)*self.R.ev(rp,tp)
 		print "R(rp,tp) = ", self.R.ev(rp,tp), rp, tp
 		print "alpha, sign ", alpha, sign
