@@ -62,7 +62,7 @@ def H0overc(r):
 	[H0overc]=Mpc^-1
 	"""
 	### General GBH model
-	#return_me = H_out+(H_in-H_out)*(1.-np.tanh((1./2.)*(r-r0)/delta_r))/(1.+np.tanh((1./2.)*r0/delta_r))
+	#return_me = Hoverc_out+(Hoverc_in-Hoverc_out)*(1.-np.tanh((1./2.)*(r-r0)/delta_r))/(1.+np.tanh((1./2.)*r0/delta_r))
 	#constrainted GBH model
 	return_me = Hoverc_not*( 1./(1.-Omega_M(r)) - Omega_M(r)/(1.-Omega_M(r))**1.5*np.arcsinh(1./Omega_M(r)-1.) ) 
 	return return_me
@@ -76,7 +76,7 @@ def d_H0overc_dr(r):
 	[d_H0overc_dr]=Mpc^-2
 	"""
 	### General GBH model
-	#return_me = -(1./2.)*(H_in-H_out)*(1.-np.tanh((1./2.)*(r-r0)/delta_r)**2)/(delta_r*(1.+np.tanh((1./2.)*r0/delta_r)))
+	#return_me = -(1./2.)*(Hoverc_in-Hoverc_out)*(1.-np.tanh((1./2.)*(r-r0)/delta_r)**2)/(delta_r*(1.+np.tanh((1./2.)*r0/delta_r)))
 	#constrainted GBH model
 	return_me = 0.5*d_Omega_M_dr(r)/(1.-Omega_M(r))/Omega_M(r) * (Omega_M(r)*H0overc(r)+2.*H0overc(r)-2*Hoverc_not)
 	return return_me
@@ -106,10 +106,10 @@ def LTB_E(r):
 	"""
 	# Since a gauge condition is used i.e. R(t0,r) =r the expression 
 	#below is always true 
-	return_me = r**2.*( H0overc(r)**2 - 2.*LTB_M(r)/r**3 - Lambda/3. )/2.
+	#return_me = r**2.*( H0overc(r)**2 - 2.*LTB_M(r)/r**3 - Lambda/3. )/2.
 	#the above should produce the same result as the expression used for 
 	# k(r) in the paper given below. uncomment and use either one.
-	#return_me = -0.5*H0overc(r)**2*(Omega_M(r)-1.)*r**2
+	return_me = -0.5*H0overc(r)**2*(Omega_M(r)-1.)*r**2
 	return return_me
 
 def dLTB_E_dr(r):
@@ -118,10 +118,10 @@ def dLTB_E_dr(r):
 	Note:
 	     See LTB_E(r) for the two choices given below
 	"""
-	return_me = 2.*LTB_E(r)/r + r**2 * (H0overc(r)*d_H0overc_dr(r) - dLTB_M_dr(r)/r**3 + 3.*LTB_M(r)/r**4)
-	#return_me = -d_H0overc_dr(r)*H0overc(r)*(Omega_M(r)-1.)*r**2 \
-	#            -0.5*H0overc(r)**2*d_Omega_M_dr(r)*r**2 \
-	#            -H0overc(r)**2*(Omega_M(r)-1.)*r
+	#return_me = 2.*LTB_E(r)/r + r**2 * (H0overc(r)*d_H0overc_dr(r) - dLTB_M_dr(r)/r**3 + 3.*LTB_M(r)/r**4)
+	return_me = -d_H0overc_dr(r)*H0overc(r)*(Omega_M(r)-1.)*r**2 \
+	            -0.5*H0overc(r)**2*d_Omega_M_dr(r)*r**2 \
+	            -H0overc(r)**2*(Omega_M(r)-1.)*r
 	return return_me
 
 
@@ -169,32 +169,78 @@ Ris = R_vec[44,33]
 Rdashis = Rdash_vec[44,33]
 
 print tis, ris, Ris, sp.ev(ris,tis), Rdashis, spdr.ev(ris,tis), 'and ', sp(ris,tis,dx=1),'dog',sp.ev(ris,tis,dx=1),'dog'
-
+ 
 spR = sciI.RectBivariateSpline(r_vector,t_vec[0,:],R_vec,s=0)
 spRdot = sciI.RectBivariateSpline(r_vector,t_vec[0,:],Rdot_vec,s=0)
 spRdash = sciI.RectBivariateSpline(r_vector,t_vec[0,:],Rdash_vec,s=0)
 spRdashdot = sciI.RectBivariateSpline(r_vector,t_vec[0,:],Rdashdot_vec,s=0)
+
+t0 = t_vec[33,-1]
+print "t0 ", t_vec[33,-1],t_vec[97,-1], spR.ev(0.01,t0), spR.ev(23.,t0), spR.ev(2*Gpc,t0)
+print "hubble ", spRdot(0.01,t0)/spR.ev(0.01,t0),spRdot(23.,t0)/spR.ev(23.,t0),spRdot(2*Gpc,t0)/spR.ev(2*Gpc,t0)
+print "hubble ", H0overc(0.01), H0overc(23.),H0overc(2*Gpc)
+
 LTB_geodesics_model0 =  LTB_geodesics(R_spline=spR,Rdot_spline=spRdot,Rdash_spline=spRdash,Rdashdot_spline=spRdashdot)
 
-def fsolve_LTB_age(t,r):
-	return spR.ev(r,t)-r
+def fsolve_LTB_age(t,r): #fsolve_LTB_age(r,t): #
+	return spR.ev(r,t)-r# spRdot.ev(r,t)/spR(r,t)-H0overc(r) 
 
-print "checking that age is the same "
-for r_val in r_vector:
-	from scipy.optimize import brentq
-	age, junk = brentq(f=fsolve_LTB_age,a=1e-4,b=30.*ageMpc,args=(r_val,),disp=True,full_output=True) 
-	print " age = ", age, " r_val = ", r_val, " junk ", junk.converged
-print "so what now"
+#print "checking that age is the same "
+#for r_val in r_vector:
+#	from scipy.optimize import brentq
+#	age, junk = brentq(f=fsolve_LTB_age,a=1e-4,b=30.*ageMpc,args=(r_val,),disp=True,full_output=True) 
+#	#age = 13.7*ageMpc
+#	#upto_r, junk = brentq(f=fsolve_LTB_age,a=r_vector[0],b=r_vector[-1],args=(age,),disp=True,full_output=True) 
+#	print " age = ", age, " r_val = ", r_val, " junk ", junk.converged
+#	#print " upto_r ", upto_r , "r_val ", r_val, " junk ", junk.converged
+#	print "hubble and ratio ", spRdot.ev(r_val,13.7*ageMpc)/spR.ev(r_val,13.7*ageMpc)*c/1e5, H0overc(r_val), spRdot.ev(r_val,age)/spR.ev(r_val,age)/ H0overc(r_val)
+#	print "H0(r)*t0 ", spRdot.ev(r_val,age)/spR.ev(r_val,age)/age, H0overc(r_val)/age
+#print "so what now"
 #factor = 0.5
 #LTB_geodesics_model0(rp=1.,tp=17.*ageMpc,ktp=-1.,alpha=np.pi*factor)
 #LTB_geodesics_model0 =  LTB_geodesics(R_spline=spR,Rdot_spline=spRdot,Rdash_spline=spRdash,Rdashdot_spline=spRdashdot)
-for factor in np.linspace(0.,2,21,endpoint=False):
+
+def get_angles():
+	"""
+	For a fixed choice of coordinates of centre of the universe sets the 
+	angles along which the geodesics will be solved. Centre direction corresponds 
+	to the dipole axis hence d subscript for its declination and right ascension. 
+	The following relationships between right ascention, declination and 
+	theta, phi coordinates of the LTB model hold:
+	theta = pi/2- dec where -pi/2 <= dec <= pi/2
+	phi   = ras       where 0 <= ras < 2pi
+	gammas:
+	       the angle between the tangent vector to the geodesic and a unit 
+	       vector pointing from the observer to the void centre.
+	returns:
+	        dec, ras, gammas
+	"""
+	pi = np.pi
+	dec_d = 29.3*pi/180.
+	ras_d = pi+96.4*pi/180.
+	
+	num_pt = 123
+	dec = np.linspace(-pi/2.,pi/2.,num_pt,endpoint=True)
+	ras = np.linspace(0.,2.*pi,num_pt,endpoint=False)
+	
+	dec, ras = np.meshgrid(dec,ras)
+	gammas = np.arccos( np.sin(dec)*np.sin(dec_d) + 
+	                    np.cos(dec)*np.cos(dec_d)*np.cos(ras-ras_d))
+	return dec.flatten(), ras.flatten(), gammas.flatten()
+declination, Rascension, gammas  = get_angles()
+
+#for factor in np.linspace(0.,2,21,endpoint=False):
+print "loc, dec, ras, z, affine_parameter, t, r, kt"
+for dec, ras, gamma in zip(declination,Rascension,gammas):
 	#LTB_geodesics_model0 =  LTB_geodesics(R_spline=spR,Rdot_spline=spRdot,Rdash_spline=spRdash,Rdashdot_spline=spRdashdot)
 	from scipy.optimize import brentq
 	loc = 2.5*Gpc
-	age, junk = brentq(f=fsolve_LTB_age,a=1e-4,b=30.*ageMpc,args=(loc,),disp=True,full_output=True)
-	print "factor and age ", factor, age, loc, junk.converged
-	LTB_geodesics_model0(rp=loc,tp=age,ktp=1.,alpha=np.pi*factor)
+	#age, junk = brentq(f=fsolve_LTB_age,a=1e-4,b=30.*ageMpc,args=(loc,),disp=True,full_output=True)
+	#print "factor and age ", factor, age, loc, junk.converged
+	#print "factor ", factor
+	ans = LTB_geodesics_model0(rp=loc,tp=13.7*ageMpc,ktp=1.,alpha=gamma)
+	print "%12.4f  %12.4f  %12.4f  %12.2f  %12.5f  %20.10f  %12.4f  %12.2f" %(loc, dec, ras, 
+	ans[-1][0],ans[-1][1],ans[-1][2],ans[-1][3],ans[-1][4]) 
 
 #from mpl_toolkits.mplot3d import axes3d
 #import matplotlib.pyplot as plt

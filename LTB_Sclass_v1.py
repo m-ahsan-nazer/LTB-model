@@ -240,23 +240,63 @@ class LTB_geodesics():
 		#	sign = -1.
 		sign = -1.
 		Rps = np.sin(alpha)*self.R.ev(rp,tp)
-		print "R(rp,tp) = ", self.R.ev(rp,tp), rp, tp
-		print "alpha, sign ", alpha, sign
+		#print "R(rp,tp) = ", self.R.ev(rp,tp), rp, tp
+		#print "alpha, sign ", alpha, sign
 		z_init = 0.
 		evolve_LTB_geodesic = ode(self.LTB_geodesic_derivs).set_integrator('vode', method='adams', with_jacobian=False,atol=atol, rtol=rtol)
 		evolve_LTB_geodesic.set_initial_value(y_init, z_init).set_f_params(sign,Rps,ktp)
-		print 'init_conds ', y_init, z_init
+		#print 'init_conds ', y_init, z_init
 		#lambda_vec =  np.concatenate(([0.],np.logspace(np.log10(1e-6),np.log10(tp),num=num_pt,endpoint=True)))
 		z_vec =  np.linspace(0.,3000.,num=num_pt,endpoint=True)
+		null_vec = np.empty((num_pt,1+4))
+		null_vec[0] = np.concatenate(([0.],y_init))
 		i = 0
 		dz= 0.
-		while evolve_LTB_geodesic.successful() and evolve_LTB_geodesic.y[self.i_tdot]/ktp<=1100.:
+		t_last_scattering = 3e-4*306.60139383811764
+		while evolve_LTB_geodesic.successful() and evolve_LTB_geodesic.y[self.i_t]/ktp>=t_last_scattering: 
+		#3e-4 billion years is 300,000 years (time of last scattering)
+		#while evolve_LTB_geodesic.successful() and evolve_LTB_geodesic.y[self.i_tdot]/ktp<=1100.:
 			dz = z_vec[i+1]-z_vec[i]
 			evolve_LTB_geodesic.integrate(evolve_LTB_geodesic.t + dz)
-			print evolve_LTB_geodesic.t, evolve_LTB_geodesic.y
-			print 'redshift ', evolve_LTB_geodesic.y[self.i_tdot],ktp, evolve_LTB_geodesic.y[self.i_tdot]/ktp
+			null_vec[i][0] = evolve_LTB_geodesic.t
+			null_vec[i][1:] = evolve_LTB_geodesic.y
+			#print null_vec[i]
+			#print 'redshift ', evolve_LTB_geodesic.y[self.i_tdot],ktp, evolve_LTB_geodesic.y[self.i_tdot]/ktp
 			i = i + 1
-		return
+		#one last step to get as close to get as close to time of last scattering as possible (linear interpolation)
+		if (null_vec[i-1][2] < t_last_scattering):
+			#i-1 because it is incremented before failing
+			#linearly interpolate for z
+			null_vec[i-1][0:1] = null_vec[i-2][0:1]+(null_vec[i-1][0:1]-null_vec[i-2][0:1])*\
+			                  (t_last_scattering - null_vec[i-2][2])/ \
+			                  (null_vec[i-1][2]-null_vec[i-2][2])
+			#and interpolate for r, kt
+			null_vec[i-1][3:] = null_vec[i-2][3:]+(null_vec[i-1][3:]-null_vec[i-2][3:])*\
+			                  (t_last_scattering - null_vec[i-2][2])/\
+			                  (null_vec[i-1][2]-null_vec[i-2][2])
+			#and set t to t_last_scattering
+			null_vec[i-1][2] = t_last_scattering
+			#print "o yeah baby"
+		elif (null_vec[i-1][2] == t_last_scattering):
+			pass	
+		else:
+			#raise Exception("did not over shoot in solving the geodesics")
+			derivs = self.LTB_geodesic_derivs(evolve_LTB_geodesic.t,evolve_LTB_geodesic.y,sign,Rps,ktp)
+			dz = (t_last_scattering - evolve_LTB_geodesic.y[1])/ derivs[1]
+			evolve_LTB_geodesic.integrate(evolve_LTB_geodesic.t + dz)
+			#i-1 because it is incremented before failing
+			null_vec[i-1][0] = evolve_LTB_geodesic.t
+			null_vec[i-1][1:] = evolve_LTB_geodesic.y
+		#derivs = self.LTB_geodesic_derivs(evolve_LTB_geodesic.t,evolve_LTB_geodesic.y,sign,Rps,ktp)
+		#dz = (t_last_scattering - evolve_LTB_geodesic.y[1])/ derivs[1]
+		#print "dz ", dz, derivs[1],t_last_scattering, evolve_LTB_geodesic.y[1]     
+		#evolve_LTB_geodesic.integrate(evolve_LTB_geodesic.t + dz)
+		#print evolve_LTB_geodesic.t, evolve_LTB_geodesic.y
+		#print 'redshift ', evolve_LTB_geodesic.y[self.i_tdot],ktp, evolve_LTB_geodesic.y[self.i_tdot]/ktp
+		
+		#print null_vec[i-1]
+		#print 'redshift ', null_vec[i-1][4],ktp,null_vec[i-1][4]/ktp
+		return null_vec[:i]
 
 
 
