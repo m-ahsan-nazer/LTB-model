@@ -64,7 +64,7 @@ def H0overc(r):
 	### General GBH model
 	#return_me = Hoverc_out+(Hoverc_in-Hoverc_out)*(1.-np.tanh((1./2.)*(r-r0)/delta_r))/(1.+np.tanh((1./2.)*r0/delta_r))
 	#constrainted GBH model
-	return_me = Hoverc_not*( 1./(1.-Omega_M(r)) - Omega_M(r)/(1.-Omega_M(r))**1.5*np.arcsinh(1./Omega_M(r)-1.) ) 
+	return_me = Hoverc_not*( 1./(1.-Omega_M(r)) - Omega_M(r)/(1.-Omega_M(r))**1.5*np.arcsinh(np.sqrt(1./Omega_M(r)-1.)) ) 
 	return return_me
 
 def d_H0overc_dr(r):
