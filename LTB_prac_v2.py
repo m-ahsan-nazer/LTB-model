@@ -19,12 +19,12 @@ H_out = 0.6 #0.3-0.7 units km s^-1 Mpc^-1
 Hoverc_out = H_out*1e5/c #units of Mpc^-1
 H_not = 0.7 #0.5-0.95 units km s^-1 Mpc^-1
 Hoverc_not = H_not*1e5/c #units of Mpc^-1
-Omega_in = 0.23 #0.05-0.35
+Omega_in = 0.33 #0.05-0.35
 #if Lambda is nonzero check equations for correct units. [Lambda]=[R]^-2
 Lambda = 0. #0.7
 Omega_out = 0.99999 - Lambda
 r0 = 2.5*Gpc #3.5 #0.33 #0.3-4.5 units Gpc
-delta_r = 0.64*r0 # 0.1r0-0.9r0
+delta_r = 0.2*r0 # 0.1r0-0.9r0
 # r shall be in units of Mpc
 # As a point of reference in class the conformal age of 13894.100411 Mpc 
 # corresponds to age = 13.461693 Gyr
@@ -143,6 +143,9 @@ LTB_model0 =  LTB_ScaleFactor(Lambda=Lambda,LTB_E=LTB_E, LTB_Edash=dLTB_E_dr,\
 r_vector = np.concatenate((np.logspace(np.log10(1e-4),np.log10(1.),num=30,endpoint=False),
                        np.linspace(1.,20.*Gpc,num=90,endpoint=True)))
 num_pt = 1000 #6000
+
+#global r_vec, t_vec, R_vec, Rdot_vec, Rdash_vec, Rdotdot_vec, Rdashdot_vec
+
 r_vec = np.zeros((len(r_vector),num_pt))
 t_vec = np.zeros((len(r_vector),num_pt))
 R_vec = np.zeros((len(r_vector),num_pt))
@@ -150,12 +153,49 @@ Rdot_vec = np.zeros((len(r_vector),num_pt))
 Rdash_vec = np.zeros((len(r_vector),num_pt))
 Rdotdot_vec = np.zeros((len(r_vector),num_pt)) 
 Rdashdot_vec = np.zeros((len(r_vector),num_pt))
+
 for i, r_loc in zip(range(len(r_vector)),r_vector):
 	print r_loc
 	t_vec[i,:], R_vec[i,:], Rdot_vec[i,:], Rdash_vec[i,:], Rdotdot_vec[i,:], \
 	Rdashdot_vec[i,:] = LTB_model0(r_loc=r_loc,num_pt=num_pt)
 	r_vec[i,:] = r_vec[i,:] + r_loc
 
+def r_loop(i,r_loc):
+	print "i, r_loc", i, r_loc
+	#t_vec[i,:], R_vec[i,:], Rdot_vec[i,:], Rdash_vec[i,:], Rdotdot_vec[i,:], \
+	#Rdashdot_vec[i,:] = LTB_model0(r_loc=r_loc,num_pt=num_pt)
+	#r_vec[i,:] = r_vec[i,:] + r_loc
+	#print "t_vec ", t_vec[i,0], t_vec[i,-1], R_vec[i,0],R_vec[i,-1]
+	return LTB_model0(r_loc=r_loc,num_pt=num_pt)
+
+
+
+from joblib import Parallel, delayed
+from joblib.pool import has_shareable_memory
+import multiprocessing as mp
+num_cores = mp.cpu_count()-1
+#Parallel(n_jobs=6)(delayed(r_loop)(i, r_loc) for i, r_loc in zip(range(len(r_vector)),r_vector))	
+#r = Parallel(n_jobs=num_cores,verbose=0)(delayed(r_loop)(i, r_loc) for i, r_loc in zip(range(len(r_vector)),r_vector))
+#r = Parallel(n_jobs=num_cores,verbose=0)(delayed(LTB_model0)(r_loc=r_loc,num_pt=num_pt) for r_loc in r_vector)
+
+#i = 0
+#for tup in r:
+#	t_vec[i,:], R_vec[i,:], Rdot_vec[i,:], Rdash_vec[i,:], Rdotdot_vec[i,:], \
+#	Rdashdot_vec[i,:] = tup
+#	i = i + 1
+#
+#for i, r_loc in zip(range(len(r_vector)),r_vector):
+#	r_vec[i,:] = r_vec[i,:]+r_loc
+
+#print "tyep of r0", type(r[0]), len(r[0])
+#import sys
+#sys.exit("done all loops")
+
+#from matplotlib import pylab as plt
+#plt.plot(t_vec[0,:],t_vec[1,:])
+#print "final ", t_vec[0,0], t_vec[0,-1], R_vec[0,0],R_vec[0,-1]
+#plt.plot(R_vec[0,:],R_vec[1,:])
+#plt.show()
 
 from matplotlib import pylab as plt
 from scipy import interpolate as sciI
@@ -190,8 +230,8 @@ for r_val in r_vector:
 	from scipy.optimize import brentq
 	age, junk = brentq(f=fsolve_LTB_age,a=1e-4,b=30.*ageMpc,args=(r_val,),disp=True,full_output=True) 
 	model_age = age
-	print "model age = ", age, "in giga years ", age/ageMpc, "r_val ", r_val, " junk ", junk.converged
-	print "hubble and ratio ", spRdot.ev(r_val,age)/spR.ev(r_val,age), H0overc(r_val)
+	###print "model age = ", age, "in giga years ", age/ageMpc, "r_val ", r_val, " junk ", junk.converged
+	###print "hubble and ratio ", spRdot.ev(r_val,age)/spR.ev(r_val,age), H0overc(r_val)
 
 def get_angles():
 	"""
@@ -225,8 +265,8 @@ declination, Rascension, gammas  = get_angles()
 #for factor in np.linspace(0.,2,21,endpoint=False):
 print "gamma, dec, ras, z, affine_parameter, t, r, p, theta"
 for dec, ras, gamma in zip(declination,Rascension,gammas):
-	loc = 250. #1.3*Gpc #r_vector[0] #1. #2.5*Gpc
-	ans = LTB_geodesics_model0(rp=loc,tp=model_age,alpha=np.pi/2.)#gamma)
+	loc = 1.3*Gpc #r_vector[0] #1. #2.5*Gpc
+	ans = LTB_geodesics_model0(rp=loc,tp=model_age,alpha=0.2*np.pi)#gamma)
 	print "%12.4f  %12.4f  %12.4f  %12.2f  %12.5f  %20.10f  %12.4f  %12.2f %12.5f" %(gamma, dec, ras, 
 	ans[-1][0],ans[-1][1],ans[-1][2],ans[-1][3],ans[-1][4],ans[-1][5]) 
 
