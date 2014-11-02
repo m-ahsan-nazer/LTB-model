@@ -97,8 +97,8 @@ LTB_model0 =  LTB_ScaleFactor(Lambda=Lambda,LTB_E=LTB_E, LTB_Edash=dLTB_E_dr,\
 #r_vector = np.concatenate((np.logspace(np.log10(1e-3),np.log10(1.),num=40,endpoint=False),
 #                       np.linspace(1.,50.,num=60,endpoint=True)))
 r_vector = np.concatenate((np.logspace(np.log10(1e-4),np.log10(1.),num=30,endpoint=False),
-                       np.linspace(1.,20.*Gpc,num=90,endpoint=True)))
-num_pt = 1000 #6000
+                       np.linspace(1.,20.*Gpc,num=90,endpoint=True)))#90
+num_pt = 2000 #6000
 
 #global r_vec, t_vec, R_vec, Rdot_vec, Rdash_vec, Rdotdot_vec, Rdashdot_vec
 
@@ -176,7 +176,7 @@ print "t0 ", t_vec[33,-1],t_vec[97,-1], spR.ev(0.01,t0), spR.ev(23.,t0), spR.ev(
 print "hubble ", spRdot(0.01,t0)/spR.ev(0.01,t0),spRdot(23.,t0)/spR.ev(23.,t0),spRdot(2*Gpc,t0)/spR.ev(2*Gpc,t0)
 print "hubble ", H0overc #(0.01), H0overc(23.),H0overc(2*Gpc)
 
-LTB_geodesics_model0 =  LTB_geodesics(R_spline=spR,Rdot_spline=spRdot,Rdash_spline=spRdash,Rdashdot_spline=spRdashdot,LTB_E=LTB_E, LTB_Edash=dLTB_E_dr)
+LTB_geodesics_model0 =  LTB_geodesics(R_spline=spR,Rdot_spline=spRdot,Rdash_spline=spRdash,Rdashdot_spline=spRdashdot,LTB_E=LTB_E, LTB_Edash=dLTB_E_dr,num_pt=1770)
 
 def fsolve_LTB_age(t,r): #fsolve_LTB_age(r,t): #
 	return spR.ev(r,t)-r# spRdot.ev(r,t)/spR(r,t)-H0overc(r) 
@@ -219,42 +219,63 @@ def get_angles():
 declination, Rascension, gammas  = get_angles()
 
 #for factor in np.linspace(0.,2,21,endpoint=False):
-print "gamma, dec, ras, z, affine_parameter, t, r, p, theta"
-for dec, ras, gamma in zip(declination,Rascension,gammas):
-	loc = 200. #1.3*Gpc #r_vector[0] #1. #2.5*Gpc
-	ans = LTB_geodesics_model0(rp=loc,tp=model_age,alpha=0.2*np.pi)#gamma)
-	print "%12.4f  %12.4f  %12.4f  %12.2f  %12.5f  %20.10f  %12.4f  %12.2f %12.5f" %(gamma, dec, ras, 
-	ans[-1][0],ans[-1][1],ans[-1][2],ans[-1][3],ans[-1][4],ans[-1][5]) 
+#print "gamma, dec, ras, z, affine_parameter, t, r, p, theta"
+#for dec, ras, gamma in zip(declination,Rascension,gammas):
+#	loc = 0.07 #1.*Gpc #200 #1.3*Gpc #r_vector[0] #1. #2.5*Gpc
+#	a,b,c,d,e,f = LTB_geodesics_model0(rp=loc,tp=13.7*ageMpc,alpha=1.01*np.pi)#gamma)
+#	#print "%12.4f  %12.4f  %12.4f  %12.10f  %12.10f  %20.10f  %12.10f  %12.10f %12.10f" %(gamma, dec, ras, 
+#	#ans[-1][0],ans[-1][1],ans[-1][2],ans[-1][3],ans[-1][4],ans[-1][5])
+#
+#	for i in xrange(len(a)):
+#		print a[i],b[i],c[i],d[i],e[i],f[i]
 
-#from mpl_toolkits.mplot3d import axes3d
-#import matplotlib.pyplot as plt
-#xx , yy = np.meshgrid(r_vector,t_vec[0,:])
-#zz = np.zeros((len(r_vector),len(t_vec)))
-#fig = plt.figure() # 
-#print 'here'
-#for rs, ts in zip(r_vec,t_vec):
-#	zz[sp.ev(rs,ts)]
-#print 'and over'
-#ax = fig.add_subplot(111, projection='3d')
-#ax.plot_surface( t_vec[0,:],r_vector,R_vec)#, rstride=10, cstride=10)
-#plt.show()
+num_angles = 10 #200
+angles = np.concatenate( (np.linspace(0.,0.99*np.pi,num=100,endpoint=True), 
+                        np.linspace(1.01*np.pi,2.*np.pi,num=100,endpoint=False)))
 
-#t_vector = np.logspace(np.log10(1e-5),np.log10(2.0),num=1000,endpoint=True)
-#r_grid, t_grid = np.meshgrid(r_vector,t_vector)
+num_z_points = LTB_geodesics_model0.num_pt 
+geo_z_vec = LTB_geodesics_model0.z_vec
 
-#R_grid = sciI.griddata((r_vec, t_vec), R_vec, (r_grid,t_grid), method='cubic')
-#ax = plt.axes(projection='3d')
-#for i in range(len(r_vector)):
-#	#ax.zaxis.set_scale('log') #set_zscale('log')
-#	ax.plot(np.zeros(num_pt)+r_vector[i],t_vec[i,:],np.log10(dLTB_M_dr(r_vector[i])*2./R_vec[i,:]**2/Rdash_vec[i,:]),'-')
-#	#ax.scatter(np.zeros(num_pt)+r_vector[i],t_vec[i,:],dLTB_M_dr(r_vector[i])*2./R_vec[i,:]**2/Rdash_vec[i,:],c=R_vec[i,:])
-#plt.show()
-#f = sciI.interp2d(r_vec,t_vec, R_vec,kind='cubic')
-#plt.plot(r_vector,t_vec)
-#plt.show()
-#np.savetxt("zshit.out",t_vec,fmt='%1.10e')
+geo_affine_vec = np.zeros((num_angles,num_z_points))
+geo_t_vec = np.zeros((num_angles,num_z_points))
+geo_r_vec = np.zeros((num_angles,num_z_points))
+geo_p_vec = np.zeros((num_angles,num_z_points))
+geo_theta_vec = np.zeros((num_angles,num_z_points))
 
 
+loc = 200
+model_age = 13.7*ageMpc
+#serial version
+#for i, angle in zip(xrange(num_angles),angles):
+#	geo_affine_vec[i,:], geo_t_vec[i,:], geo_r_vec[i,:], geo_p_vec[i,:], \
+#	geo_theta_vec[i,:] = LTB_geodesics_model0(rp=loc,tp=model_age,alpha=angle)
 
+#parallel version 1
+#num_cores=7
+#geos = Parallel(n_jobs=num_cores,verbose=1)(
+#delayed(LTB_geodesics_model0)(rp=loc,tp=model_age,alpha=angle) for angle in angles[0:10])
 
+#parallel version 2
+def geo_loop(angle):
+	return LTB_geodesics_model0(rp=loc,tp=model_age,alpha=angle)
+num_cores=7
+geos = Parallel(n_jobs=num_cores,verbose=1)(
+delayed(geo_loop)(angle=angle) for angle in angles[0:10])
+
+i = 0
+for geo_tuple in geos:
+	geo_affine_vec[i,:], geo_t_vec[i,:], geo_r_vec[i,:], geo_p_vec[i,:], \
+	geo_theta_vec[i,:] = geo_tuple
+	i = i + 1
+
+#finally make the 2d splines
+sp_affine = sciI.RectBivariateSpline(angles[0:10],geo_z_vec,geo_affine_vec,s=0)
+sp_t_vec = sciI.RectBivariateSpline(angles[0:10],geo_z_vec,geo_t_vec,s=0)
+sp_r_vec = sciI.RectBivariateSpline(angles[0:10],geo_z_vec,geo_r_vec,s=0)
+sp_p_vec = sciI.RectBivariateSpline(angles[0:10],geo_z_vec,geo_p_vec,s=0)
+sp_theta_vec = sciI.RectBivariateSpline(angles[0:10],geo_z_vec,geo_theta_vec,s=0)
+
+print "geodesics splines are working"
+print sp_r_vec.ev(0.1,1100.),sp_r_vec.ev(0.1,1100.,dx=1)
+print sp_theta_vec.ev(0.1,1100.),sp_theta_vec.ev(0.1,1100.,dx=1)
 
