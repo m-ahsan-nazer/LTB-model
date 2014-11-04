@@ -22,7 +22,7 @@ Gpc = 1e3*Mpc
 hout = 0.51 #0.5-0.95 units km s^-1 Mpc^-1
 H0overc = hout*1e5/c #units of Mpc^-1
 
-r0 = 1.34*Gpc #3.5 #0.33 #0.3-4.5 units Gpc
+r0 = 1.34*Gpc #1.35*Gpc #3.5 #0.33 #0.3-4.5 units Gpc
 delta_r = 0.4*r0 # 0.1r0-0.9r0
 delta_alpha = 0.9
 alpha_0 = 1.
@@ -176,6 +176,36 @@ print "t0 ", t_vec[33,-1],t_vec[97,-1], spR.ev(0.01,t0), spR.ev(23.,t0), spR.ev(
 print "hubble ", spRdot(0.01,t0)/spR.ev(0.01,t0),spRdot(23.,t0)/spR.ev(23.,t0),spRdot(2*Gpc,t0)/spR.ev(2*Gpc,t0)
 print "hubble ", H0overc #(0.01), H0overc(23.),H0overc(2*Gpc)
 
+#make 3d plots of H(t,r), rho(t,r)
+#from mpl_toolkits.mplot3d import axes3d
+#import matplotlib.pyplot as plt
+#import numpy as np
+#from matplotlib import cm
+#
+#xx = np.linspace(r_vector[0],r_vector[-1],2000)
+#yy = t_vec[0,:]
+#zz = spR.ev(xx,yy[0])/spRdot.ev(xx,yy[0])
+#zz1 = spR.ev(xx,yy[100])/spRdot.ev(xx,yy[100])
+#
+#fig = plt.figure()
+#ax = fig.add_subplot(111, projection='3d')
+#X, Y = np.meshgrid(r_vector,t_vec[0,:])
+#ax.plot_wireframe(X,Y,np.log(R_vec/Rdot_vec), rstride=120, cstride=120)
+#ax.plot_wireframe(X,Y,R_vec/Rdot_vec, rstride=10, cstride=10)
+#ax.plot_surface(X,Y,R_vec,rstride=1,cstride=1,cmap=cm.coolwarm,linewidth=0,antialiased=False)
+#ax = fig.gca(projection='3d')
+#ax = plt.axes(projection='3d')
+#ones = np.arange(2000)
+#sliced = ones[::10]
+#for i in sliced:
+#	zz = spR.ev(xx[i],yy)/spRdot.ev(xx[i],yy)
+#	ax.plot(xx,yy,zz)
+#
+#plt.show()
+#
+#import sys
+#sys.exit("ding dong")
+
 LTB_geodesics_model0 =  LTB_geodesics(R_spline=spR,Rdot_spline=spRdot,Rdash_spline=spRdash,Rdashdot_spline=spRdashdot,LTB_E=LTB_E, LTB_Edash=dLTB_E_dr,num_pt=1770)
 
 def fsolve_LTB_age(t,r): #fsolve_LTB_age(r,t): #
@@ -203,19 +233,23 @@ def get_angles():
 	       vector pointing from the observer to the void centre.
 	returns:
 	        dec, ras, gammas
+	        dec = bee , ras = ell
 	"""
 	pi = np.pi
 	dec_d = 29.3*pi/180.
 	ras_d = pi+96.4*pi/180.
 	
 	num_pt = 1 #3 #123
-	dec = np.linspace(-pi/2.,pi/2.,num_pt,endpoint=True)
-	ras = np.linspace(0.,2.*pi,num_pt,endpoint=False)
-	
-	dec, ras = np.meshgrid(dec,ras)
+	#dec = np.linspace(-pi/2.,pi/2.,num_pt,endpoint=True)
+	#ras = np.linspace(0.,2.*pi,num_pt,endpoint=False)
+	ras, dec = np.loadtxt("pixel_center_galactic_coord_12288.dat",unpack=True)
+	#convert to radians
+	ras = np.pi*ras/180.
+	dec = np.pi*dec/180.
+	#dec, ras = np.meshgrid(dec,ras)
 	gammas = np.arccos( np.sin(dec)*np.sin(dec_d) + 
 	                    np.cos(dec)*np.cos(dec_d)*np.cos(ras-ras_d))
-	return dec.flatten(), ras.flatten(), gammas.flatten()
+	return dec, ras, gammas #dec.flatten(), ras.flatten(), gammas.flatten()
 declination, Rascension, gammas  = get_angles()
 
 #for factor in np.linspace(0.,2,21,endpoint=False):
@@ -229,9 +263,13 @@ declination, Rascension, gammas  = get_angles()
 #	for i in xrange(len(a)):
 #		print a[i],b[i],c[i],d[i],e[i],f[i]
 
-num_angles = 10 #200
+num_angles = 200 #200
 angles = np.concatenate( (np.linspace(0.,0.99*np.pi,num=100,endpoint=True), 
                         np.linspace(1.01*np.pi,2.*np.pi,num=100,endpoint=False)))
+#increasing to 1000 makes very little difference in the splines
+#num_angles = 1000
+#angles = np.concatenate( (np.linspace(0.,0.999*np.pi,num=500,endpoint=True), 
+#                        np.linspace(1.001*np.pi,2.*np.pi,num=500,endpoint=False)))
 
 num_z_points = LTB_geodesics_model0.num_pt 
 geo_z_vec = LTB_geodesics_model0.z_vec
@@ -244,7 +282,14 @@ geo_theta_vec = np.zeros((num_angles,num_z_points))
 
 
 loc = 200
-model_age = 13.7*ageMpc
+model_age = 12.8*ageMpc
+
+#First for an on center observer calculate the time when redshift is 1100.
+center_affine, center_t_vec, center_r_vec, \
+center_p_vec, center_theta_vec = LTB_geodesics_model0(rp=r_vector[0],tp=model_age,alpha=0.)
+sp_center_t = sciI.UnivariateSpline(geo_z_vec,center_t_vec,s=0)
+print "age at t(z=1100) for central observer is ", sp_center_t(1100.)
+
 #serial version
 #for i, angle in zip(xrange(num_angles),angles):
 #	geo_affine_vec[i,:], geo_t_vec[i,:], geo_r_vec[i,:], geo_p_vec[i,:], \
@@ -259,8 +304,8 @@ model_age = 13.7*ageMpc
 def geo_loop(angle):
 	return LTB_geodesics_model0(rp=loc,tp=model_age,alpha=angle)
 num_cores=7
-geos = Parallel(n_jobs=num_cores,verbose=1)(
-delayed(geo_loop)(angle=angle) for angle in angles[0:10])
+geos = Parallel(n_jobs=num_cores,verbose=5)(
+delayed(geo_loop)(angle=angle) for angle in angles)
 
 i = 0
 for geo_tuple in geos:
@@ -269,13 +314,220 @@ for geo_tuple in geos:
 	i = i + 1
 
 #finally make the 2d splines
-sp_affine = sciI.RectBivariateSpline(angles[0:10],geo_z_vec,geo_affine_vec,s=0)
-sp_t_vec = sciI.RectBivariateSpline(angles[0:10],geo_z_vec,geo_t_vec,s=0)
-sp_r_vec = sciI.RectBivariateSpline(angles[0:10],geo_z_vec,geo_r_vec,s=0)
-sp_p_vec = sciI.RectBivariateSpline(angles[0:10],geo_z_vec,geo_p_vec,s=0)
-sp_theta_vec = sciI.RectBivariateSpline(angles[0:10],geo_z_vec,geo_theta_vec,s=0)
+sp_affine = sciI.RectBivariateSpline(angles,geo_z_vec,geo_affine_vec,s=0) #[0:10]
+sp_t_vec = sciI.RectBivariateSpline(angles,geo_z_vec,geo_t_vec,s=0)
+sp_r_vec = sciI.RectBivariateSpline(angles,geo_z_vec,geo_r_vec,s=0)
+sp_p_vec = sciI.RectBivariateSpline(angles,geo_z_vec,geo_p_vec,s=0)
+sp_theta_vec = sciI.RectBivariateSpline(angles,geo_z_vec,geo_theta_vec,s=0)
 
-print "geodesics splines are working"
-print sp_r_vec.ev(0.1,1100.),sp_r_vec.ev(0.1,1100.,dx=1)
-print sp_theta_vec.ev(0.1,1100.),sp_theta_vec.ev(0.1,1100.,dx=1)
+#My approch to getting the time below
+#print "geodesics splines are working"
+#print sp_r_vec.ev(0.1,1100.),sp_r_vec.ev(0.1,1100.,dx=1)
+#print sp_theta_vec.ev(0.1,1100.),sp_theta_vec.ev(0.1,1100.,dx=1)
+#from scipy import integrate
+#t_integral = lambda angle: sp_t_vec.ev(angle,1100.)*np.sin(angle)/2.
+#mean_t_at_z,error = integrate.quad(t_integral, 0., np.pi)
+#print "mean_t_at_z(1100) =", mean_t_at_z, error
+#for angle in angles:
+#	print "angle time ",angle, sp_t_vec.ev(angle,1100.)
+#	print "Delta_z", 1100. - (mean_t_at_z - sp_t_vec.ev(angle,1100.))/sp_t_vec.ev(angle,1100.,dy=1)
 
+z_of_gamma = np.empty_like(gammas)
+age_central = sp_center_t(1100.)
+z_of_gamma = 1100. - (age_central-sp_t_vec.ev(gammas,1100.))/sp_t_vec.ev(gammas,1100.,dy=1)
+np.savetxt("z_of_gamma_1000.dat",z_of_gamma)
+
+
+def lum_and_Ang_dist(gamma,z):
+	"""
+	The luminosity distance for an off center observer obtained from the angular 
+	diameter distance. Assumes the splines have already been defined and are accessible.
+	The gamma is the fixed angle.
+	"""
+	t = sp_t_vec.ev(gamma,z)
+	r = sp_r_vec.ev(gamma,z)
+	theta = sp_theta_vec.ev(gamma,z)
+	
+	dr_dgamma = sp_r_vec.ev(gamma,z,dx=1)
+	dtheta_dgamma = sp_theta_vec.ev(gamma,z,dx=1)
+	
+	R = spR.ev(r,t)
+	Rdash = spRdash.ev(r,t)
+	E = LTB_E(r)
+	
+	DL4 = (1.+z)**8*R**4*np.sin(theta)**2/np.sin(gamma)**2 * ( 
+	      Rdash**2/R**2/(1.+2.*E)*dr_dgamma**2 + dtheta_dgamma**2)
+	
+	DL = DL4**0.25
+	DA = DL/(1.+z)**2
+	return DL4**0.25, DA
+
+def lum_dist(z,gamma,comp_dist):
+	"""
+	The luminosity distance for an off center observer obtained from the angular 
+	diameter distance. Assumes the splines have already been defined and are accessible.
+	The gamma is the fixed angle.
+	"""
+	t = sp_t_vec.ev(gamma,z)
+	r = sp_r_vec.ev(gamma,z)
+	theta = sp_theta_vec.ev(gamma,z)
+	
+	dr_dgamma = sp_r_vec.ev(gamma,z,dx=1)
+	dtheta_dgamma = sp_theta_vec.ev(gamma,z,dx=1)
+	
+	R = spR.ev(r,t)
+	Rdash = spRdash.ev(r,t)
+	E = LTB_E(r)
+	
+	DL4 = (1.+z)**8*R**4*np.sin(theta)**2/np.sin(gamma)**2 * ( 
+	      Rdash**2/R**2/(1.+2.*E)*dr_dgamma**2 + dtheta_dgamma**2)
+	
+	DL = DL4**0.25
+	return DL4**0.25 - comp_dist
+
+from matplotlib import pylab as plt
+z = np.concatenate((np.logspace(np.log10(1e-1),np.log10(10),200),np.linspace(10.01,1100,800)))
+fig = plt.figure()
+
+for gamma in np.linspace(0.1,2*np.pi,7,endpoint=False):
+	plt.plot(z, lum_and_Ang_dist(gamma,z)[0],label=str(gamma))
+plt.legend(loc='best')
+plt.yscale('symlog',linthreshx=200)
+#plt.xscale('log')
+plt.xlim(z[0],z[-1])
+fig = plt.figure()
+for gamma in np.linspace(0.1,2*np.pi,7,endpoint=False):
+	plt.plot(z, lum_and_Ang_dist(gamma,z)[0],label=str(gamma))
+plt.legend(loc='best')
+plt.yscale('symlog',linthreshx=200.)
+plt.xlim(z[0],z[-1])
+#angular diameter distances
+fig = plt.figure()
+for gamma in np.linspace(0.1,2*np.pi,7,endpoint=False):
+	plt.plot(z, lum_and_Ang_dist(gamma,z)[1],label=str(gamma))
+plt.legend(loc='best')
+plt.xscale('log')
+plt.xlim(z[0],z[-1])
+fig = plt.figure()
+z = np.linspace(0.,.2,3000)
+for gamma in np.linspace(0.1,2*np.pi,7,endpoint=False):
+	plt.plot(z, lum_and_Ang_dist(gamma,z)[1],label=str(gamma))
+plt.legend(loc='best')
+#plt.yscale('symlog',linthreshx=200.)
+
+
+plt.show()
+
+#v = cz (km/sec)   d (/h Mpc)  v_pec (km/s)   sigma_v   l (degrees) b (degrees)
+comp_cz, comp_d, comp_vpec, comp_sigv, comp_ell, comp_bee = np.loadtxt("COMPOSITEn-survey-dsrt.dat",unpack=True)
+def get_gammas_for_comp_angles():
+	"""
+	For a fixed choice of coordinates of centre of the universe sets the 
+	angles along which the geodesics will be solved. Centre direction corresponds 
+	to the dipole axis hence d subscript for its declination and right ascension. 
+	The following relationships between right ascention, declination and 
+	theta, phi coordinates of the LTB model hold:
+	theta = pi/2- dec where -pi/2 <= dec <= pi/2
+	phi   = ras       where 0 <= ras < 2pi
+	gammas:
+	       the angle between the tangent vector to the geodesic and a unit 
+	       vector pointing from the observer to the void centre.
+	returns:
+	        dec, ras, gammas
+	        dec = bee , ras = ell
+	"""
+	pi = np.pi
+	dec_d = 29.3*pi/180.
+	ras_d = pi+96.4*pi/180.
+	
+	ras = comp_ell
+	dec = comp_bee
+	#convert to radians
+	ras = np.pi*ras/180.
+	dec = np.pi*dec/180.
+	#dec, ras = np.meshgrid(dec,ras)
+	gammas = np.arccos( np.sin(dec)*np.sin(dec_d) + 
+	                    np.cos(dec)*np.cos(dec_d)*np.cos(ras-ras_d))
+	return gammas
+
+comp_gammas = get_gammas_for_comp_angles()
+
+from scipy.optimize import brentq
+Alnes_model = open("Alnes_model.dat",'w')
+Alnes_model.write("cz [km/s]     dist [Mpc]   ell  bee \n")
+redshifts = np.zeros(len(comp_cz))
+i = 0
+for gamma, comp_dist in zip(comp_gammas,comp_d):
+	redshift, junk = brentq(f=lum_dist,a=1e-4,b=2.,args=(gamma,comp_dist,),disp=True,full_output=True)
+	redshifts[i] = redshift
+	Alnes_model.write("%15.6f   %10.6f    %6.2f %6.2f \n" %(redshift*c/1e3, comp_dist, 
+	                   comp_ell[i], comp_bee[i]))
+	i = i+1
+Alnes_model.close()
+
+rand_i = np.random.randint(comp_d.size,size=7)
+import matplotlib as mpl
+from mpl_toolkits.mplot3d import Axes3D
+mpl.rcParams['legend.fontsize'] = 10
+
+fig = plt.figure()
+ax = fig.gca(projection='3d')
+for i in rand_i:
+	#z1 = np.linspace(0.,redshifts[i],100)
+	z2 = np.linspace(0.,1100.,2200)
+	#r1 = sp_r_vec.ev(comp_gammas[i],z1)
+	#theta1 = sp_theta_vec.ev(comp_gammas[i],z1)
+	#phi1 = comp_bee[i]*np.pi/180.
+	#x1 = r1*np.sin(theta1)*np.cos(phi1)
+	#y1 = r1*np.sin(theta1)*np.sin(phi1)
+	#z1 = r1*np.cos(theta1)
+	#ax.plot(x1, y1, z1,color='g',ls='-', label=str(i))
+	#now the second part
+	r2 = sp_r_vec.ev(comp_gammas[i],z2)
+	theta2 = sp_theta_vec.ev(comp_gammas[i],z2)
+	phi2 = comp_bee[i]*np.pi/180.
+	x2 = r2*np.sin(theta2)*np.cos(phi2)
+	y2 = r2*np.sin(theta2)*np.sin(phi2)
+	ax.plot(x2, y2, z2,label=str(i))
+
+ax.set_xlabel("x=rsin(theta)cos(phi)")
+ax.set_ylabel("y=rsin(theta)sin(phi)")
+ax.set_zlabel("z=rcos(theta)")
+#ax.set_xscale("symlog")
+#ax.set_yscale("symlog")
+#ax.set_zscale("symlog")
+ax.legend()
+
+z = np.concatenate((np.logspace(np.log10(1e-1),np.log10(10),200),np.linspace(10.01,1100,800)))
+fig = plt.figure()
+for i in rand_i:
+	plt.plot(z, lum_and_Ang_dist(comp_gammas[i],z)[0],label=str(i))
+plt.legend(loc='best')
+plt.yscale('symlog',linthreshx=200)
+plt.title("Luminosity distances")
+#plt.xscale('log')
+plt.xlim(z[0],z[-1])
+fig = plt.figure()
+for i in rand_i:
+	plt.plot(z, lum_and_Ang_dist(comp_gammas[i],z)[0],label=str(i))
+plt.legend(loc='best')
+plt.yscale('symlog',linthreshx=200.)
+plt.xlim(z[0],z[-1])
+plt.title("Luminosity distances")
+#angular diameter distances
+fig = plt.figure()
+for i in rand_i:
+	plt.plot(z, lum_and_Ang_dist(comp_gammas[i],z)[1],label=str(i))
+plt.legend(loc='best')
+plt.xscale('log')
+plt.xlim(z[0],z[-1])
+plt.title("Angular diameter distance")
+fig = plt.figure()
+z = np.linspace(0.,.2,3000)
+for i in rand_i:
+	plt.plot(z, lum_and_Ang_dist(comp_gammas[i],z)[1],label=str(i))
+plt.legend(loc='best')
+plt.title("Angular diameter distance")
+plt.legend(loc='best')
+
+plt.show()
