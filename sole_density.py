@@ -155,11 +155,11 @@ Rdash_vec = np.zeros((len(r_vector),num_pt))
 Rdotdot_vec = np.zeros((len(r_vector),num_pt)) 
 Rdashdot_vec = np.zeros((len(r_vector),num_pt))
 
-for i, r_loc in zip(range(len(r_vector)),r_vector):
-	print r_loc
-	t_vec[i,:], R_vec[i,:], Rdot_vec[i,:], Rdash_vec[i,:], Rdotdot_vec[i,:], \
-	Rdashdot_vec[i,:] = LTB_model0(r_loc=r_loc,num_pt=num_pt)
-	r_vec[i,:] = r_vec[i,:] + r_loc
+#for i, r_loc in zip(range(len(r_vector)),r_vector):
+#	print r_loc
+#	t_vec[i,:], R_vec[i,:], Rdot_vec[i,:], Rdash_vec[i,:], Rdotdot_vec[i,:], \
+#	Rdashdot_vec[i,:] = LTB_model0(r_loc=r_loc,num_pt=num_pt)
+#	r_vec[i,:] = r_vec[i,:] + r_loc
 
 def r_loop(i,r_loc):
 	print "i, r_loc", i, r_loc
@@ -176,17 +176,17 @@ from joblib.pool import has_shareable_memory
 import multiprocessing as mp
 num_cores = mp.cpu_count()-1
 #Parallel(n_jobs=6)(delayed(r_loop)(i, r_loc) for i, r_loc in zip(range(len(r_vector)),r_vector))	
-#r = Parallel(n_jobs=num_cores,verbose=0)(delayed(r_loop)(i, r_loc) for i, r_loc in zip(range(len(r_vector)),r_vector))
+r = Parallel(n_jobs=num_cores,verbose=0)(delayed(r_loop)(i, r_loc) for i, r_loc in zip(range(len(r_vector)),r_vector))
 #r = Parallel(n_jobs=num_cores,verbose=0)(delayed(LTB_model0)(r_loc=r_loc,num_pt=num_pt) for r_loc in r_vector)
 
-#i = 0
-#for tup in r:
-#	t_vec[i,:], R_vec[i,:], Rdot_vec[i,:], Rdash_vec[i,:], Rdotdot_vec[i,:], \
-#	Rdashdot_vec[i,:] = tup
-#	i = i + 1
-#
-#for i, r_loc in zip(range(len(r_vector)),r_vector):
-#	r_vec[i,:] = r_vec[i,:]+r_loc
+i = 0
+for tup in r:
+	t_vec[i,:], R_vec[i,:], Rdot_vec[i,:], Rdash_vec[i,:], Rdotdot_vec[i,:], \
+	Rdashdot_vec[i,:] = tup
+	i = i + 1
+
+for i, r_loc in zip(range(len(r_vector)),r_vector):
+	r_vec[i,:] = r_vec[i,:]+r_loc
 
 #print "tyep of r0", type(r[0]), len(r[0])
 #import sys
@@ -240,29 +240,46 @@ print "now checking the quad decorator"
 
 @Integrate
 def LTB_t(RoverR0,twoE,twoM,Lambda_over3):
+	#return 1./np.sqrt(twoE + twoM/RoverR0 + Lambda_over3 * RoverR0**2)
 	return np.sqrt(RoverR0)/np.sqrt(twoE*RoverR0 + twoM + Lambda_over3 * RoverR0**3)
 
+LTB_t.set_options(epsabs=1.49e-16,epsrel=1.49e-12)
+LTB_t.set_limits(0.,1.)
 @Findroot
 def LTB_2E_Eq(twoE_over_r3,twoM_over_r3,Lambda_over3):
-	return LTB_t.integral(twoE_over_r3,twoM_over_r3,Lambda_over3) - model_age
+	return model_age*1e-3 - LTB_t.integral(twoE_over_r3,twoM_over_r3,Lambda_over3) #*1.e-3
 
 r = 0.01 #2*ageMpc
 t = 1.*ageMpc
 #print "integrand ", LTB_t(spR.ev(r,t)/r,2.*LTB_E(r)/r**2,2.*LTB_M(r)/r**3,0.)
-print "integral ", LTB_t.integral(2.*LTB_E(r)/r**2,2.*LTB_M(r)/r**3,0.), LTB_t.abserr, model_age
-print "checking LTB_E_Eq ", LTB_2E_Eq(2.*LTB_E(r)/r**2,2.*LTB_M(r)/r**3,0.) 
+print "integral ", LTB_t.integral(2.*LTB_E(r)/r**2*1e6,2.*LTB_M(r)/r**3*1e6,0.), LTB_t.abserr, model_age
+print "checking LTB_E_Eq ", LTB_2E_Eq(2.*LTB_E(r)/r**2*1e6,2.*LTB_M(r)/r**3*1e6,0.) 
 
+LTB_2E_Eq.set_options(xtol=4.4408920985006262e-16,rtol=4.4408920985006262e-15)
 LTB_2E_Eq.set_bounds(0.,2.)
-print "analytic E ", 2.*LTB_E(r)/r**2
-print "E from integral ", LTB_2E_Eq.root(2.*LTB_M(r)/r**3,0.), 'and converged ', LTB_2E_Eq.converged
-print "% error ", (LTB_2E_Eq.root(2.*LTB_M(r)/r**3,0.)/(2.*LTB_E(r)/r**2)-1.)*100
+print "analytic E ", 2.*LTB_E(r)/r**2*1e6
+print "E from integral ", LTB_2E_Eq.root(2.*LTB_M(r)/r**3*1e6,0.), 'and converged ', LTB_2E_Eq.converged
+print "% error ", (LTB_2E_Eq.root(2.*LTB_M(r)/r**3*1e6,0.)/(2.*LTB_E(r)/r**2*1e6)-1.)*100
+#print "% abserr ", LTB_2E_Eq.abserr
 
 E = np.zeros(len(r_vector))
+#serial loop
+#i = 0
+#for r in r_vector:
+#	E[i] = LTB_2E_Eq.root(2.*LTB_M(r)/r**3,0.)
+#	i = i + 1
+
+def E_loop(r,Lambda):
+	return LTB_2E_Eq.root(2.*LTB_M(r)/r**3*1e6,Lambda)
+
+
+E_vec = Parallel(n_jobs=num_cores,verbose=0)(delayed(E_loop)(r,0.) for r in r_vector)
+E_vec = np.asarray(E_vec)
+
 i = 0
 for r in r_vector:
-	E[i] = LTB_2E_Eq.root(2.*LTB_M(r)/r**3,0.)
+	print E_vec[i]/1e6, 2.*LTB_E(r)/r**2, (E_vec[i]/1e6)/( 2.*LTB_E(r)/r**2)
 	i = i + 1
-
 print "all done"
 
 
