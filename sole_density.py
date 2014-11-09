@@ -24,8 +24,8 @@ Omega_in = 0.33 #0.05-0.35
 #if Lambda is nonzero check equations for correct units. [Lambda]=[R]^-2
 Lambda = 0. #0.7
 Omega_out = 0.99999 - Lambda
-r0 = 2.5*Gpc #3.5 #0.33 #0.3-4.5 units Gpc
-delta_r = 0.2*r0 # 0.1r0-0.9r0
+r0 = 50./H_out #2.5*Gpc #3.5 #0.33 #0.3-4.5 units Gpc
+delta_r = 15. #0.2*r0 # 0.1r0-0.9r0
 # r shall be in units of Mpc
 # As a point of reference in class the conformal age of 13894.100411 Mpc 
 # corresponds to age = 13.461693 Gyr
@@ -34,6 +34,15 @@ delta_r = 0.2*r0 # 0.1r0-0.9r0
 #     = 15. *10**9*(365.25*24.*60.*60.)* 299792458. m
 #     = 15. *10**9*(365.25*24.*60.*60.)* 299792458. *3.24077929*10**(-23) Mpc
 #     = 15. * 306.60139383811764 Mpc
+
+###################
+#wiltshire notation
+# r0 = R = 20 to 60  (h^{-1] Mpc)
+delta_w = -0.95 #-0.95 to -1
+#delta_r =  w = 2.5  , 5.,  10.,  15.
+# add subscript w to all quantities wiltshire
+###################
+
 ageMpc = 306.60139383811764
 def Omega_M(r):
 	"""
@@ -125,7 +134,48 @@ def dLTB_E_dr(r):
 	            -H0overc(r)**2*(Omega_M(r)-1.)*r
 	return return_me
 
+def dLTBw_M_dr(r):
+	"""
+	[LTB_M] = Mpc
+	"""
+	return_me = 0.75*Omega_out*Hoverc_out**2*r**2 * (2.+delta_w - delta_w* 
+	                                                 np.tanh((r-r0)/delta_r))
+	return return_me
 
+#fist make a spline and use it to calcuate the integral than make a second spline
+# so that it is computationally less expensive
+from scipy.interpolate import UnivariateSpline as sp1d
+rw = np.concatenate((np.logspace(np.log10(1e-5),np.log10(1.),num=500,endpoint=False),
+                       np.linspace(1.,20.*Gpc,num=500,endpoint=True)))
+
+spdLTBw_M_dr = sp1d(rw, dLTBw_M_dr(rw), s=0)
+spdLTBw_M_dr_int = spdLTBw_M_dr.antiderivative()
+Mw = spdLTBw_M_dr_int(rw)
+
+spMw = sp1d(rw,Mw,s=0)
+
+def LTBw_M(r):
+	"""
+	[LTB_M] = Mpc
+	"""
+	return spMw(r)
+
+from matplotlib import pylab as plt
+fig = plt.figure()
+plt.plot(rw, dLTBw_M_dr(rw),label="dM_dr")
+#plt.xscale('log')
+#plt.yscale('symlog')
+plt.legend(loc='best')
+fig = plt.figure()
+plt.plot(rw,LTBw_M(rw),label="M(r)")
+plt.legend(loc='best')
+plt.yscale('log')
+plt.xscale('log')
+fig = plt.figure()
+plt.plot(rw,dLTBw_M_dr(rw)*2/rw**2,label="rho(r)")
+plt.xscale('log')
+plt.legend(loc='best')
+plt.show()
 
 LTB_model0 =  LTB_ScaleFactor(Lambda=Lambda,LTB_E=LTB_E, LTB_Edash=dLTB_E_dr,\
                               LTB_M=LTB_M, LTB_Mdash=dLTB_M_dr)
