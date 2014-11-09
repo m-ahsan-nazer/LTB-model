@@ -16,7 +16,7 @@ Mpc = 1.
 Gpc = 1e3*Mpc
 H_in = 0.73 #0.5-0.85 units km s^-1 Mpc^-1
 Hoverc_in = H_in*1e5/c #units of Mpc^-1
-H_out = 0.6 #0.3-0.7 units km s^-1 Mpc^-1
+H_out = 0.9 #0.3-0.7 units km s^-1 Mpc^-1
 Hoverc_out = H_out*1e5/c #units of Mpc^-1
 H_not = 0.7 #0.5-0.95 units km s^-1 Mpc^-1
 Hoverc_not = H_not*1e5/c #units of Mpc^-1
@@ -145,15 +145,21 @@ def dLTBw_M_dr(r):
 #fist make a spline and use it to calcuate the integral than make a second spline
 # so that it is computationally less expensive
 from scipy.interpolate import UnivariateSpline as sp1d
-rw = np.concatenate((np.logspace(np.log10(1e-5),np.log10(1.),num=500,endpoint=False),
-                       np.linspace(1.,20.*Gpc,num=500,endpoint=True)))
+#rw = np.concatenate((np.logspace(np.log10(1e-10),np.log10(1.),num=500,endpoint=False),
+#                       np.linspace(1.,20.*Gpc,num=500,endpoint=True)))
 
-spdLTBw_M_dr = sp1d(rw, dLTBw_M_dr(rw), s=0)
+rw = np.concatenate((np.logspace(np.log10(1e-10),np.log10(1.),num=500,endpoint=False),
+                       np.linspace(1.,300.,num=500,endpoint=False)))
+
+rw = np.concatenate((rw,np.linspace(300.,20.*Gpc,num=300,endpoint=True)))
+
+
+spdLTBw_M_dr = sp1d(rw, dLTBw_M_dr(rw), s=0) #dLTBw_M_dr(rw), s=0)
 spdLTBw_M_dr_int = spdLTBw_M_dr.antiderivative()
-Mw = spdLTBw_M_dr_int(rw)
+Mw = spdLTBw_M_dr_int(rw) #- spdLTBw_M_dr_int(rw[0])
 
 spMw = sp1d(rw,Mw,s=0)
-
+print "spMw(6) ", spMw(6.)
 def LTBw_M(r):
 	"""
 	[LTB_M] = Mpc
@@ -167,6 +173,7 @@ plt.plot(rw, dLTBw_M_dr(rw),label="dM_dr")
 #plt.yscale('symlog')
 plt.legend(loc='best')
 fig = plt.figure()
+#plt.plot(rw,LTBw_M(rw)/LTB_M(rw),label="M(r)")
 plt.plot(rw,LTBw_M(rw),label="M(r)")
 plt.legend(loc='best')
 plt.yscale('log')
