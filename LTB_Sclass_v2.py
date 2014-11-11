@@ -411,6 +411,42 @@ class LTB_geodesics():
 
 
 
+def sample_radial_coord(r0,delta_r,r_init=1e-4,r_max=20*1e3,num_pt1=100,num_pt2=100):
+	"""
+	The comoving radial coordinate r is assumed to be in mega parsecs
+	num_pt1:
+	        must be an integer divisible by 5. Then 3/5th of num_pt1 is linearly
+	        distributed from r0-delta_r to r0+delta_r1 and 1/5th is linearly
+	        distributed from r0-2delta_r to r0-delta_r and 1/5th is linearly 
+	        distributed from r0+delta_r to r0+2delta_r 
+	num_pt2:
+	       must be divisible by 2. Half of it is logrithmicly distributed 
+	       between r_init and r0-2delta_r and the other half between r0+2deltar_r 
+	       and r_max
+	"""
+	if not isinstance(num_pt1, int) or not isinstance(num_pt2, int):
+		raise AssertionError("num_pt1 and num_pt2 must be integer")	
+	elif np.mod(num_pt1,5) !=0 :
+		raise AssertionError("num_pt1 must be an integer divisible by 5")
+	elif np.mod(num_pt2,2) !=0 :
+		raise AssertionError("num_pt2 must be even")
+	
+	r_vector = np.logspace(np.log10(r_init),np.log10(r0-2.*delta_r),
+	                       num_pt2/2,endpoint=False)
+	
+	r_vector = np.concatenate((r_vector,
+	           np.linspace(r0-2.*delta_r,r0-delta_r,num_pt1/5,endpoint=False) ))
+	
+	r_vector = np.concatenate((r_vector,
+	           np.linspace(r0-delta_r,r0+delta_r,(num_pt1/5)*3,endpoint=False) )) 
+	
+	r_vector = np.concatenate((r_vector,
+	           np.linspace(r0+delta_r,r0+2.*delta_r,num_pt1/5,endpoint=False) ))
+	
+	r_vector = np.concatenate((r_vector,
+	           np.logspace(np.log10(r0+2.*delta_r),np.log10(r_max),
+	                       num_pt2/2,endpoint=True) ))           
+	return r_vector
 
 
 

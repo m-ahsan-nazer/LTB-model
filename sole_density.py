@@ -3,7 +3,7 @@
 from __future__ import division
 import numpy as np
 from LTB_Sclass_v2 import LTB_ScaleFactor
-from LTB_Sclass_v2 import LTB_geodesics
+from LTB_Sclass_v2 import LTB_geodesics, sample_radial_coord
 from LTB_housekeeping import *
 
 
@@ -19,9 +19,9 @@ Hoverc_not = H_not*1e5/c #units of Mpc^-1
 Omega_in = 0.33 #0.05-0.35
 #if Lambda is nonzero check equations for correct units. [Lambda]=[R]^-2
 Lambda = 0. #0.7
-Omega_out = 0.99999 - Lambda
-r0 = 3.*Gpc #50./H_out #2.5*Gpc #3.5 #0.33 #0.3-4.5 units Gpc
-delta_r = 0.2*r0 #5. #15. #0.2*r0 # 0.1r0-0.9r0
+Omega_out = 1. - Lambda
+r0 = 2.*Gpc #50./H_out #3.*Gpc  #2.5*Gpc #3.5 #0.33 #0.3-4.5 units Gpc
+delta_r = 0.2*r0 #2.5 #0.2*r0 #5. #0.2*r0 # 0.1r0-0.9r0
 # r shall be in units of Mpc
 # As a point of reference in class the conformal age of 13894.100411 Mpc 
 # corresponds to age = 13.461693 Gyr
@@ -64,14 +64,14 @@ def dLTBw_M_dr(r):
 #fist make a spline and use it to calcuate the integral than make a second spline
 # so that it is computationally less expensive
 from scipy.interpolate import UnivariateSpline as sp1d
-#rw = np.concatenate((np.logspace(np.log10(1e-10),np.log10(1.),num=500,endpoint=False),
-#                       np.linspace(1.,20.*Gpc,num=500,endpoint=True)))
-
+#generously sample M(r) as it is ot expensive
 rw = np.concatenate((np.logspace(np.log10(1e-10),np.log10(1.),num=500,endpoint=False),
-                       np.linspace(1.,300.,num=500,endpoint=False)))
+                       np.linspace(1.,r0+2.*delta_r,num=500,endpoint=False)))
 
-rw = np.concatenate((rw,np.linspace(300.,20.*Gpc,num=300,endpoint=True)))
+rw = np.concatenate((rw,np.linspace(r0+2.*delta_r,20.*Gpc,num=300,endpoint=True)))
 
+r_vector = sample_radial_coord(r0=r0,delta_r=delta_r,r_init=1e-4,r_max=20*1e3,num_pt1=100,num_pt2=100)
+size_r_vector = 200
 
 spdLTBw_M_dr = sp1d(rw, dLTBw_M_dr(rw), s=0) #dLTBw_M_dr(rw), s=0)
 spdLTBw_M_dr_int = spdLTBw_M_dr.antiderivative()
@@ -117,19 +117,19 @@ LTB_model0 =  LTB_ScaleFactor(Lambda=Lambda,LTB_E=LTB_E, LTB_Edash=dLTB_E_dr,\
 
 #r_vector = np.concatenate((np.logspace(np.log10(1e-3),np.log10(1.),num=40,endpoint=False),
 #                       np.linspace(1.,50.,num=60,endpoint=True)))
-r_vector = np.concatenate((np.logspace(np.log10(1e-4),np.log10(1.),num=30,endpoint=False),
-                       np.linspace(1.,20.*Gpc,num=90,endpoint=True)))
+#r_vector = np.concatenate((np.logspace(np.log10(1e-4),np.log10(1.),num=90,endpoint=False),
+#                       np.linspace(1.,20.*Gpc,num=110,endpoint=True)))#30 90
 num_pt = 1000 #6000
 
 #global r_vec, t_vec, R_vec, Rdot_vec, Rdash_vec, Rdotdot_vec, Rdashdot_vec
 
-r_vec = np.zeros((len(r_vector),num_pt))
-t_vec = np.zeros((len(r_vector),num_pt))
-R_vec = np.zeros((len(r_vector),num_pt))
-Rdot_vec = np.zeros((len(r_vector),num_pt))
-Rdash_vec = np.zeros((len(r_vector),num_pt))
-Rdotdot_vec = np.zeros((len(r_vector),num_pt)) 
-Rdashdot_vec = np.zeros((len(r_vector),num_pt))
+r_vec = np.zeros((size_r_vector,num_pt))
+t_vec = np.zeros((size_r_vector,num_pt))
+R_vec = np.zeros((size_r_vector,num_pt))
+Rdot_vec = np.zeros((size_r_vector,num_pt))
+Rdash_vec = np.zeros((size_r_vector,num_pt))
+Rdotdot_vec = np.zeros((size_r_vector,num_pt)) 
+Rdashdot_vec = np.zeros((size_r_vector,num_pt))
 
 #for i, r_loc in zip(range(len(r_vector)),r_vector):
 #	print r_loc
