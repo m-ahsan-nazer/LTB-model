@@ -12,7 +12,7 @@ Mpc = 1.
 Gpc = 1e3*Mpc
 H_in = 0.73 #0.5-0.85 units km s^-1 Mpc^-1
 Hoverc_in = H_in*1e5/c #units of Mpc^-1
-H_out = 0.9 #0.3-0.7 units km s^-1 Mpc^-1
+H_out = 0.7 #0.3-0.7 units km s^-1 Mpc^-1
 Hoverc_out = H_out*1e5/c #units of Mpc^-1
 H_not = 0.7 #0.5-0.95 units km s^-1 Mpc^-1
 Hoverc_not = H_not*1e5/c #units of Mpc^-1
@@ -20,8 +20,8 @@ Omega_in = 0.33 #0.05-0.35
 #if Lambda is nonzero check equations for correct units. [Lambda]=[R]^-2
 Lambda = 0. #0.7
 Omega_out = 0.99999 - Lambda
-r0 = 50./H_out #2.5*Gpc #3.5 #0.33 #0.3-4.5 units Gpc
-delta_r = 15. #0.2*r0 # 0.1r0-0.9r0
+r0 = 3.*Gpc #50./H_out #2.5*Gpc #3.5 #0.33 #0.3-4.5 units Gpc
+delta_r = 0.2*r0 #5. #15. #0.2*r0 # 0.1r0-0.9r0
 # r shall be in units of Mpc
 # As a point of reference in class the conformal age of 13894.100411 Mpc 
 # corresponds to age = 13.461693 Gyr
@@ -254,9 +254,13 @@ E_vec = np.asarray(E_vec)
 
 i = 0
 for r in r_vector:
-	print E_vec[i]/1e6, 2.*LTB_E(r)/r**2, (E_vec[i]/1e6)/( 2.*LTB_E(r)/r**2)
+	print E_vec[i]/1e6, 2.*LTB_E(r), (E_vec[i]/1e6)/( 2.*LTB_E(r)/r**2), r
 	i = i + 1
 print "all done"
-
+fig = plt.figure()
+plt.plot(r_vector,E_vec/1e6,'g-',r_vector,LTB_E(r_vector)*2/r_vector**2,'p--')
+fig = plt.figure()
+plt.plot(r_vector,E_vec/1e6*r_vector**2,'r-',r_vector,LTB_E(r_vector)*2,'b--')
+plt.show()
 
 
