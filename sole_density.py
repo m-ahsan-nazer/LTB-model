@@ -18,10 +18,11 @@ H_not = 0.7 #0.5-0.95 units km s^-1 Mpc^-1
 Hoverc_not = H_not*1e5/c #units of Mpc^-1
 Omega_in = 0.33 #0.05-0.35
 #if Lambda is nonzero check equations for correct units. [Lambda]=[R]^-2
-Lambda = 0. #0.7
-Omega_out = 1. - Lambda
-r0 = 2.*Gpc #50./H_out #3.*Gpc  #2.5*Gpc #3.5 #0.33 #0.3-4.5 units Gpc
-delta_r = 0.2*r0 #2.5 #0.2*r0 #5. #0.2*r0 # 0.1r0-0.9r0
+Lambda = 0.7 * 3.*Hoverc_not**2
+Omega_Lambda = Lambda/3./Hoverc_not**2
+Omega_out = 1. - Omega_Lambda
+r0 = 50./H_out #3.*Gpc  #2.5*Gpc #3.5 #0.33 #0.3-4.5 units Gpc
+delta_r = 2.5 #0.2*r0 #5. #0.2*r0 # 0.1r0-0.9r0
 # r shall be in units of Mpc
 # As a point of reference in class the conformal age of 13894.100411 Mpc 
 # corresponds to age = 13.461693 Gyr
@@ -64,11 +65,13 @@ def dLTBw_M_dr(r):
 #fist make a spline and use it to calcuate the integral than make a second spline
 # so that it is computationally less expensive
 from scipy.interpolate import UnivariateSpline as sp1d
-#generously sample M(r) as it is ot expensive
-rw = np.concatenate((np.logspace(np.log10(1e-10),np.log10(1.),num=500,endpoint=False),
-                       np.linspace(1.,r0+2.*delta_r,num=500,endpoint=False)))
+#generously sample M(r) as it is not expensive
+#rw = np.concatenate((np.logspace(np.log10(1e-10),np.log10(1.),num=500,endpoint=False),
+#                       np.linspace(1.,r0+4.*delta_r,num=500,endpoint=False)))
 
-rw = np.concatenate((rw,np.linspace(r0+2.*delta_r,20.*Gpc,num=300,endpoint=True)))
+#rw = np.concatenate((rw,np.linspace(r0+4.*delta_r,20.*Gpc,num=300,endpoint=True)))
+
+rw = sample_radial_coord(r0=r0,delta_r=delta_r,r_init=1e-10,r_max=20*1e3,num_pt1=1000,num_pt2=1000)
 
 r_vector = sample_radial_coord(r0=r0,delta_r=delta_r,r_init=1e-4,r_max=20*1e3,num_pt1=100,num_pt2=100)
 size_r_vector = 200
@@ -76,7 +79,7 @@ size_r_vector = 200
 spdLTBw_M_dr = sp1d(rw, dLTBw_M_dr(rw), s=0) #dLTBw_M_dr(rw), s=0)
 spdLTBw_M_dr_int = spdLTBw_M_dr.antiderivative()
 Mw = spdLTBw_M_dr_int(rw) #- spdLTBw_M_dr_int(rw[0])
-
+model_age = 4282.74963782
 spMw = sp1d(rw,Mw,s=0)
 print "spMw(6) ", spMw(6.)
 def LTBw_M(r):
@@ -102,6 +105,98 @@ plt.plot(rw,dLTBw_M_dr(rw)*2/rw**2,label="rho(r)")
 plt.xscale('log')
 plt.legend(loc='best')
 plt.show()
+
+##########################################################
+#*********************************************************
+print "now checking the quad decorator"
+
+
+@Integrate
+def LTB_t(RoverR0,twoE,twoM,Lambda_over3):
+	#return 1./np.sqrt(twoE + twoM/RoverR0 + Lambda_over3 * RoverR0**2)
+	return np.sqrt(RoverR0)/np.sqrt(twoE*RoverR0 + twoM + Lambda_over3 * RoverR0**3)
+
+LTB_t.set_options(epsabs=1.49e-16,epsrel=1.49e-12)
+LTB_t.set_limits(0.,1.)
+@Findroot
+def LTB_2E_Eq(twoE_over_r3,twoM_over_r3,Lambda_over3):
+	return model_age*1e-3 - LTB_t.integral(twoE_over_r3,twoM_over_r3,Lambda_over3) #*1.e-3
+
+r = 0.01 #2*ageMpc
+t = 1.*ageMpc
+#print "integrand ", LTB_t(spR.ev(r,t)/r,2.*LTB_E(r)/r**2,2.*LTB_M(r)/r**3,0.)
+print "integral ", LTB_t.integral(2.*LTB_E(r)/r**2*1e6,2.*LTB_M(r)/r**3*1e6,0.), LTB_t.abserr, model_age
+print "checking LTB_E_Eq ", LTB_2E_Eq(2.*LTB_E(r)/r**2*1e6,2.*LTB_M(r)/r**3*1e6,0.) 
+
+LTB_2E_Eq.set_options(xtol=4.4408920985006262e-16,rtol=4.4408920985006262e-15)
+LTB_2E_Eq.set_bounds(0.,2.)
+print "analytic E ", 2.*LTB_E(r)/r**2*1e6
+print "E from integral ", LTB_2E_Eq.root(2.*LTB_M(r)/r**3*1e6,0.), 'and converged ', LTB_2E_Eq.converged
+print "% error ", (LTB_2E_Eq.root(2.*LTB_M(r)/r**3*1e6,0.)/(2.*LTB_E(r)/r**2*1e6)-1.)*100
+#print "% abserr ", LTB_2E_Eq.abserr
+
+E = np.zeros(len(r_vector))
+#serial loop
+#i = 0
+#for r in r_vector:
+#	E[i] = LTB_2E_Eq.root(2.*LTB_M(r)/r**3,0.)
+#	i = i + 1
+
+def E_loop(r,Lambda):
+	return LTB_2E_Eq.root(2.*LTB_M(r)/r**3*1e6,Lambda)
+
+from joblib import Parallel, delayed
+from joblib.pool import has_shareable_memory
+import multiprocessing as mp
+num_cores = mp.cpu_count()-1
+
+E_vec = Parallel(n_jobs=num_cores,verbose=0)(delayed(E_loop)(r,0.) for r in r_vector)
+E_vec = np.asarray(E_vec)
+
+i = 0
+for r in r_vector:
+	print E_vec[i]/1e6, 2.*LTB_E(r), (E_vec[i]/1e6)/( 2.*LTB_E(r)/r**2), r
+	i = i + 1
+print "all done"
+fig = plt.figure()
+plt.plot(r_vector,E_vec/1e6,'g-',r_vector,LTB_E(r_vector)*2/r_vector**2,'p--')
+fig = plt.figure()
+plt.plot(r_vector,E_vec/1e6*r_vector**2,'r-',r_vector,LTB_E(r_vector)*2,'b--')
+plt.show()
+
+E_vec = E_vec/1e6
+
+spLTBw_E = sp1d(r_vector, E_vec, s=0) 
+dE_vec_dr = spLTBw_E(r_vector,nu=1) #compute the first derivative
+spdLTBw_E_dr = sp1d(r_vector,dE_vec_dr,s=0)
+
+def LTBw_E(r):
+	"""
+	returns the spline for r^2 * E(r) as E was E/r^2
+	"""
+	return r**2*spLTBw_E(r)
+
+def dLTBw_E_dr(r):
+	"""
+	Returns the spline for diff(E(r),r)
+	"""
+	return 2.*r*spLTBw_E(r) + r**2*spdLTBw_E_dr(r)
+
+fig = plt.figure()
+#plt.plot(r_vector,dLTBw_E_dr(r_vector))
+plt.plot(rw,dLTBw_E_dr(rw))
+plt.show()
+
+#**********************************************************
+#**********************************************************
+#Omega_M      = gbh.Omega_M
+#d_Omega_M_dr = gbh.d_Omega_M_dr
+#H0overc      = gbh.H0overc
+#d_H0overc_dr = gbh.d_H0overc_dr 
+LTB_M        = LTBw_M
+dLTB_M_dr    = dLTBw_M_dr 
+LTB_E        = LTBw_E
+dLTB_E_dr    = dLTBw_E_dr
 
 LTB_model0 =  LTB_ScaleFactor(Lambda=Lambda,LTB_E=LTB_E, LTB_Edash=dLTB_E_dr,\
                               LTB_M=LTB_M, LTB_Mdash=dLTB_M_dr)
@@ -147,9 +242,7 @@ def r_loop(i,r_loc):
 
 
 
-from joblib import Parallel, delayed
-from joblib.pool import has_shareable_memory
-import multiprocessing as mp
+
 num_cores = mp.cpu_count()-1
 #Parallel(n_jobs=6)(delayed(r_loop)(i, r_loc) for i, r_loc in zip(range(len(r_vector)),r_vector))	
 r = Parallel(n_jobs=num_cores,verbose=0)(delayed(r_loop)(i, r_loc) for i, r_loc in zip(range(len(r_vector)),r_vector))
@@ -207,60 +300,7 @@ for r_val in r_vector:
 	from scipy.optimize import brentq
 	age, junk = brentq(f=fsolve_LTB_age,a=1e-4,b=30.*ageMpc,args=(r_val,),disp=True,full_output=True) 
 	model_age = age
-	###print "model age = ", age, "in giga years ", age/ageMpc, "r_val ", r_val, " junk ", junk.converged
+	print "model age = ", age, "in giga years ", age/ageMpc, "r_val ", r_val, " junk ", junk.converged
 	###print "hubble and ratio ", spRdot.ev(r_val,age)/spR.ev(r_val,age), H0overc(r_val)
-
-
-print "now checking the quad decorator"
-
-
-@Integrate
-def LTB_t(RoverR0,twoE,twoM,Lambda_over3):
-	#return 1./np.sqrt(twoE + twoM/RoverR0 + Lambda_over3 * RoverR0**2)
-	return np.sqrt(RoverR0)/np.sqrt(twoE*RoverR0 + twoM + Lambda_over3 * RoverR0**3)
-
-LTB_t.set_options(epsabs=1.49e-16,epsrel=1.49e-12)
-LTB_t.set_limits(0.,1.)
-@Findroot
-def LTB_2E_Eq(twoE_over_r3,twoM_over_r3,Lambda_over3):
-	return model_age*1e-3 - LTB_t.integral(twoE_over_r3,twoM_over_r3,Lambda_over3) #*1.e-3
-
-r = 0.01 #2*ageMpc
-t = 1.*ageMpc
-#print "integrand ", LTB_t(spR.ev(r,t)/r,2.*LTB_E(r)/r**2,2.*LTB_M(r)/r**3,0.)
-print "integral ", LTB_t.integral(2.*LTB_E(r)/r**2*1e6,2.*LTB_M(r)/r**3*1e6,0.), LTB_t.abserr, model_age
-print "checking LTB_E_Eq ", LTB_2E_Eq(2.*LTB_E(r)/r**2*1e6,2.*LTB_M(r)/r**3*1e6,0.) 
-
-LTB_2E_Eq.set_options(xtol=4.4408920985006262e-16,rtol=4.4408920985006262e-15)
-LTB_2E_Eq.set_bounds(0.,2.)
-print "analytic E ", 2.*LTB_E(r)/r**2*1e6
-print "E from integral ", LTB_2E_Eq.root(2.*LTB_M(r)/r**3*1e6,0.), 'and converged ', LTB_2E_Eq.converged
-print "% error ", (LTB_2E_Eq.root(2.*LTB_M(r)/r**3*1e6,0.)/(2.*LTB_E(r)/r**2*1e6)-1.)*100
-#print "% abserr ", LTB_2E_Eq.abserr
-
-E = np.zeros(len(r_vector))
-#serial loop
-#i = 0
-#for r in r_vector:
-#	E[i] = LTB_2E_Eq.root(2.*LTB_M(r)/r**3,0.)
-#	i = i + 1
-
-def E_loop(r,Lambda):
-	return LTB_2E_Eq.root(2.*LTB_M(r)/r**3*1e6,Lambda)
-
-
-E_vec = Parallel(n_jobs=num_cores,verbose=0)(delayed(E_loop)(r,0.) for r in r_vector)
-E_vec = np.asarray(E_vec)
-
-i = 0
-for r in r_vector:
-	print E_vec[i]/1e6, 2.*LTB_E(r), (E_vec[i]/1e6)/( 2.*LTB_E(r)/r**2), r
-	i = i + 1
-print "all done"
-fig = plt.figure()
-plt.plot(r_vector,E_vec/1e6,'g-',r_vector,LTB_E(r_vector)*2/r_vector**2,'p--')
-fig = plt.figure()
-plt.plot(r_vector,E_vec/1e6*r_vector**2,'r-',r_vector,LTB_E(r_vector)*2,'b--')
-plt.show()
 
 
