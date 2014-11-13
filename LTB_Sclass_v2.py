@@ -110,7 +110,7 @@ class LTB_ScaleFactor():
 		raise NotImplementedError('Yo king! Look at LTB_ScaleFactor_derivs and supply the Jacobian, peace.')
 
 	
-	def __call__(self,r_loc,R_init=1e-8,num_pt=20000,atol=1e-12,rtol=1e-10):
+	def __call__(self,r_loc,R_init=1e-8,t_max=30.*307.,num_pt=20000,atol=1e-12,rtol=1e-10):
 		"""
 		At a given comoving radial coordinate r=r_loc evolve  diff(R(t,r),t) , 
 		diff(R(t,r),t,t) and diff(R(t,r),r,t) starting from a time t_init when 
@@ -120,6 +120,8 @@ class LTB_ScaleFactor():
 		      is the fixed comoving radial coordinate r=r_loc 
 		R_init:
 		       is R(t=t_init,r=r_loc)
+		t_max:
+		      stop integration at 30 billion years equal to about 30*307 Mpc
 		t_init:
 		       the initial time when integration is started. The series solution 
 		       is used to find t_init, when R=R_init
@@ -180,7 +182,7 @@ class LTB_ScaleFactor():
 		
 		#log distributed time steps
 		#t_vec = np.logspace(np.log10(t_init),np.log10(2.01),num=num_pt,endpoint=True)
-		t_vec = np.logspace(np.log10(1e-6),np.log10(30.01*306.60139383811764),num=num_pt,endpoint=True)#changed from 1e-4 to 1e-5
+		t_vec = np.logspace(np.log10(1e-6),np.log10(t_max),num=num_pt,endpoint=True)#changed from 1e-4 to 1e-5
 		i=0
 		dt=0.
 		t_dump = np.logspace(np.log10(t_init),np.log10(1e-6),num=200,endpoint=True)#num=200 to 20
