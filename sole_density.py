@@ -198,8 +198,193 @@ for r_val in r_vector:
 	print "model age = ", model_age/ageMpc, "sp(r,age) ", sp.ev(r_val,model_age), "r ", r_val
 	print "H(r,t0) ", spRdot.ev(r_val,model_age)/spR.ev(r_val,model_age)
 
-model_geodesics =  LTB_geodesics(R_spline=spR,Rdot_spline=spRdot,Rdash_spline=spRdash,Rdashdot_spline=spRdashdot,LTB_E=LTBw_E, LTB_Edash=dLTBw_E_dr)
+###############################################################################
+#******************************************************************************
+model_geodesics =  LTB_geodesics(R_spline=spR,Rdot_spline=spRdot,
+Rdash_spline=spRdash,Rdashdot_spline=spRdashdot,LTB_E=LTBw_E, LTB_Edash=dLTBw_E_dr)
 
+num_angles = 100 #20. #200 #200
+angles = np.linspace(0.,0.995*np.pi,num=100,endpoint=True)
+#angles = np.concatenate( (np.linspace(0.,0.995*np.pi,num=10,endpoint=True), 
+#                        np.linspace(1.01*np.pi,2.*np.pi,num=10,endpoint=False)))
+
+num_z_points = model_geodesics.num_pt 
+geo_z_vec = model_geodesics.z_vec
+
+geo_affine_vec, geo_t_vec, geo_r_vec, geo_p_vec, geo_theta_vec = \
+                        [np.zeros((num_angles,num_z_points)) for i in xrange(5)] 
+
+loc = 20
+
+#First for an on center observer calculate the time when redshift is 1100.
+center_affine, center_t_vec, center_r_vec, \
+center_p_vec, center_theta_vec = model_geodesics(rp=r_vector[0],tp=model_age,alpha=angles[-1])
+sp_center_t = spline_1d(geo_z_vec,center_t_vec,s=0)
+print "age at t(z=1100) for central observer is ", sp_center_t(1100.)
+
+#serial version
+#for i, angle in zip(xrange(num_angles),angles):
+#	geo_affine_vec[i,:], geo_t_vec[i,:], geo_r_vec[i,:], geo_p_vec[i,:], \
+#	geo_theta_vec[i,:] = LTB_geodesics_model0(rp=loc,tp=model_age,alpha=angle)
+
+#parallel version 2
+def geo_loop(angle):
+	return model_geodesics(rp=loc,tp=model_age,alpha=angle)
+
+num_cores=7
+geos = Parallel(n_jobs=num_cores,verbose=5)(
+delayed(geo_loop)(angle=angle) for angle in angles)
+
+i = 0
+for geo_tuple in geos:
+	geo_affine_vec[i,:], geo_t_vec[i,:], geo_r_vec[i,:], geo_p_vec[i,:], \
+	geo_theta_vec[i,:] = geo_tuple
+	i = i + 1
+
+#finally make the 2d splines
+sp_affine = spline_2d(angles,geo_z_vec,geo_affine_vec,s=0) 
+sp_t_vec = spline_2d(angles,geo_z_vec,geo_t_vec,s=0)
+sp_r_vec = spline_2d(angles,geo_z_vec,geo_r_vec,s=0)
+sp_p_vec = spline_2d(angles,geo_z_vec,geo_p_vec,s=0)
+sp_theta_vec = spline_2d(angles,geo_z_vec,geo_theta_vec,s=0)
+
+
+def get_angles():
+	"""
+	For a fixed choice of coordinates of centre of the universe sets the 
+	angles along which the geodesics will be solved. Centre direction corresponds 
+	to the dipole axis hence d subscript for its declination and right ascension. 
+	The following relationships between right ascention, declination and 
+	theta, phi coordinates of the LTB model hold:
+	theta = pi/2- dec where -pi/2 <= dec <= pi/2
+	phi   = ras       where 0 <= ras < 2pi
+	gammas:
+	       the angle between the tangent vector to the geodesic and a unit 
+	       vector pointing from the observer to the void centre.
+	returns:
+	        dec, ras, gammas
+	        dec = bee , ras = ell
+	"""
+	pi = np.pi
+	dec_d = 29.3*pi/180.
+	ras_d = pi+96.4*pi/180.
+	
+	num_pt = 1 #3 #123
+	#dec = np.linspace(-pi/2.,pi/2.,num_pt,endpoint=True)
+	#ras = np.linspace(0.,2.*pi,num_pt,endpoint=False)
+	ras, dec = np.loadtxt("pixel_center_galactic_coord_12288.dat",unpack=True)
+	#convert to radians
+	ras = np.pi*ras/180.
+	dec = np.pi*dec/180.
+	#dec, ras = np.meshgrid(dec,ras)
+	gammas = np.arccos( np.sin(dec)*np.sin(dec_d) + 
+	                    np.cos(dec)*np.cos(dec_d)*np.cos(ras-ras_d))
+	return dec, ras, gammas #dec.flatten(), ras.flatten(), gammas.flatten()
+declination, Rascension, gammas  = get_angles()
+
+z_of_gamma = np.empty_like(gammas)
+age_central = sp_center_t(1100.)
+z_of_gamma = 1100. - (age_central-sp_t_vec.ev(gammas,1100.))/sp_t_vec.ev(gammas,1100.,dy=1)
+np.savetxt("zw_of_gamma_1000.dat",z_of_gamma)
+
+
+def lum_and_Ang_dist(gamma,z):
+	"""
+	The luminosity distance for an off center observer obtained from the angular 
+	diameter distance. Assumes the splines have already been defined and are accessible.
+	The gamma is the fixed angle.
+	"""
+	t = sp_t_vec.ev(gamma,z)
+	r = sp_r_vec.ev(gamma,z)
+	theta = sp_theta_vec.ev(gamma,z)
+	
+	dr_dgamma = sp_r_vec.ev(gamma,z,dx=1)
+	dtheta_dgamma = sp_theta_vec.ev(gamma,z,dx=1)
+	
+	R = spR.ev(r,t)
+	Rdash = spRdash.ev(r,t)
+	E = LTBw_E(r)
+	
+	DL4 = (1.+z)**8*R**4*np.sin(theta)**2/np.sin(gamma)**2 * ( 
+	      Rdash**2/R**2/(1.+2.*E)*dr_dgamma**2 + dtheta_dgamma**2)
+	
+	DL = DL4**0.25
+	DA = DL/(1.+z)**2
+	return DL4**0.25, DA
+
+def lum_dist(z,gamma,comp_dist):
+	"""
+	The luminosity distance for an off center observer obtained from the angular 
+	diameter distance. Assumes the splines have already been defined and are accessible.
+	The gamma is the fixed angle.
+	"""
+	t = sp_t_vec.ev(gamma,z)
+	
+	r = sp_r_vec.ev(gamma,z)
+	theta = sp_theta_vec.ev(gamma,z)
+	
+	dr_dgamma = sp_r_vec.ev(gamma,z,dx=1)
+	dtheta_dgamma = sp_theta_vec.ev(gamma,z,dx=1)
+	
+	R = spR.ev(r,t)
+	Rdash = spRdash.ev(r,t)
+	E = LTBw_E(r)
+	
+	DL4 = (1.+z)**8*R**4*np.sin(theta)**2/np.sin(gamma)**2 * ( 
+	      Rdash**2/R**2/(1.+2.*E)*dr_dgamma**2 + dtheta_dgamma**2)
+	
+	DL = DL4**0.25
+	
+	return DL4**0.25 - comp_dist
+
+#v = cz (km/sec)   d (/h Mpc)  v_pec (km/s)   sigma_v   l (degrees) b (degrees)
+comp_cz, comp_d, comp_vpec, comp_sigv, comp_ell, comp_bee = np.loadtxt("COMPOSITEn-survey-dsrt.dat",unpack=True)
+def get_gammas_for_comp_angles():
+	"""
+	For a fixed choice of coordinates of centre of the universe sets the 
+	angles along which the geodesics will be solved. Centre direction corresponds 
+	to the dipole axis hence d subscript for its declination and right ascension. 
+	The following relationships between right ascention, declination and 
+	theta, phi coordinates of the LTB model hold:
+	theta = pi/2- dec where -pi/2 <= dec <= pi/2
+	phi   = ras       where 0 <= ras < 2pi
+	gammas:
+	       the angle between the tangent vector to the geodesic and a unit 
+	       vector pointing from the observer to the void centre.
+	returns:
+	        dec, ras, gammas
+	        dec = bee , ras = ell
+	"""
+	pi = np.pi
+	dec_d = 29.3*pi/180.
+	ras_d = pi+96.4*pi/180.
+	
+	ras = comp_ell
+	dec = comp_bee
+	#convert to radians
+	ras = np.pi*ras/180.
+	dec = np.pi*dec/180.
+	#dec, ras = np.meshgrid(dec,ras)
+	gammas = np.arccos( np.sin(dec)*np.sin(dec_d) + 
+	                    np.cos(dec)*np.cos(dec_d)*np.cos(ras-ras_d))
+	return gammas
+
+comp_gammas = get_gammas_for_comp_angles()
+
+wiltshire_model = open("wiltshire_model.dat",'w')
+wiltshire_model.write("cz [km/s]     dist [Mpc]   ell  bee \n")
+redshifts = np.zeros(len(comp_cz))
+
+from scipy.optimize import brentq
+i = 0
+for gamma, comp_dist in zip(comp_gammas,comp_d):
+	#redshift, junk = brentq(f=lum_dist,a=1e-4,b=2.,args=(gamma,comp_dist,),disp=True,full_output=True)
+	redshift, junk = brentq(f=lum_dist,a=0.,b=2.,args=(gamma,comp_dist,),disp=True,full_output=True)
+	redshifts[i] = redshift
+	wiltshire_model.write("%15.6f   %10.6f    %6.2f %6.2f \n" %(redshift*c/1e3, comp_dist, 
+	                   comp_ell[i], comp_bee[i]))
+	i = i+1
+wiltshire_model.close()
 
 #******************************************************************************
 #******************************************************************************
