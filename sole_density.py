@@ -249,38 +249,8 @@ sp_p_vec = spline_2d(angles,geo_z_vec,geo_p_vec,s=0)
 sp_theta_vec = spline_2d(angles,geo_z_vec,geo_theta_vec,s=0)
 
 
-def get_angles():
-	"""
-	For a fixed choice of coordinates of centre of the universe sets the 
-	angles along which the geodesics will be solved. Centre direction corresponds 
-	to the dipole axis hence d subscript for its declination and right ascension. 
-	The following relationships between right ascention, declination and 
-	theta, phi coordinates of the LTB model hold:
-	theta = pi/2- dec where -pi/2 <= dec <= pi/2
-	phi   = ras       where 0 <= ras < 2pi
-	gammas:
-	       the angle between the tangent vector to the geodesic and a unit 
-	       vector pointing from the observer to the void centre.
-	returns:
-	        dec, ras, gammas
-	        dec = bee , ras = ell
-	"""
-	pi = np.pi
-	dec_d = 29.3*pi/180.
-	ras_d = pi+96.4*pi/180.
-	
-	num_pt = 1 #3 #123
-	#dec = np.linspace(-pi/2.,pi/2.,num_pt,endpoint=True)
-	#ras = np.linspace(0.,2.*pi,num_pt,endpoint=False)
-	ras, dec = np.loadtxt("pixel_center_galactic_coord_12288.dat",unpack=True)
-	#convert to radians
-	ras = np.pi*ras/180.
-	dec = np.pi*dec/180.
-	#dec, ras = np.meshgrid(dec,ras)
-	gammas = np.arccos( np.sin(dec)*np.sin(dec_d) + 
-	                    np.cos(dec)*np.cos(dec_d)*np.cos(ras-ras_d))
-	return dec, ras, gammas #dec.flatten(), ras.flatten(), gammas.flatten()
-declination, Rascension, gammas  = get_angles()
+ras, dec = np.loadtxt("pixel_center_galactic_coord_12288.dat",unpack=True)
+Rascension, declination, gammas = get_angles(ras, dec)
 
 z_of_gamma = np.empty_like(gammas)
 z_star = 1100.
@@ -356,37 +326,8 @@ def lum_dist(z,gamma,comp_dist):
 
 #v = cz (km/sec)   d (/h Mpc)  v_pec (km/s)   sigma_v   l (degrees) b (degrees)
 comp_cz, comp_d, comp_vpec, comp_sigv, comp_ell, comp_bee = np.loadtxt("COMPOSITEn-survey-dsrt.dat",unpack=True)
-def get_gammas_for_comp_angles():
-	"""
-	For a fixed choice of coordinates of centre of the universe sets the 
-	angles along which the geodesics will be solved. Centre direction corresponds 
-	to the dipole axis hence d subscript for its declination and right ascension. 
-	The following relationships between right ascention, declination and 
-	theta, phi coordinates of the LTB model hold:
-	theta = pi/2- dec where -pi/2 <= dec <= pi/2
-	phi   = ras       where 0 <= ras < 2pi
-	gammas:
-	       the angle between the tangent vector to the geodesic and a unit 
-	       vector pointing from the observer to the void centre.
-	returns:
-	        dec, ras, gammas
-	        dec = bee , ras = ell
-	"""
-	pi = np.pi
-	dec_d = 29.3*pi/180.
-	ras_d = pi+96.4*pi/180.
-	
-	ras = comp_ell
-	dec = comp_bee
-	#convert to radians
-	ras = np.pi*ras/180.
-	dec = np.pi*dec/180.
-	#dec, ras = np.meshgrid(dec,ras)
-	gammas = np.arccos( np.sin(dec)*np.sin(dec_d) + 
-	                    np.cos(dec)*np.cos(dec_d)*np.cos(ras-ras_d))
-	return gammas
 
-comp_gammas = get_gammas_for_comp_angles()
+comp_ell_rad, comp_bee_rad, comp_gammas  = get_angles(comp_ell,comp_bee)
 
 wiltshire_model = open("wiltshire_model.dat",'w')
 wiltshire_model.write("cz [km/s]     dist [Mpc]   ell  bee \n")

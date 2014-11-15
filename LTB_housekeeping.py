@@ -1,5 +1,6 @@
 #To be used for various chores that are better left outside of the natural flow
 #in the code
+import numpy as np
 
 class Findroot(object):
 	"""
@@ -41,7 +42,7 @@ class Findroot(object):
 		return self._converged
 	
 	def set_options(self,xtol=1e-12,rtol=4.4408920985006262e-16,
-	                maxiter=100, full_output=False, disp=True):
+	                maxiter=100, full_output=False, disp=True):#xtol=1e-12
 		self._xtol = xtol
 		self._rtol = rtol
 		self._maxiter = maxiter
@@ -71,7 +72,7 @@ class Integrate(object):
 		self.set_limits()
 		self.set_options()
 	
-	def set_limits(self,a=1e-10,b=1.):
+	def set_limits(self,a=0.,b=1.):
 		self._a=a
 		self._b=b
 	
@@ -93,7 +94,7 @@ class Integrate(object):
 	def abserr(self):
 		return self._abserr
 	
-	def set_options(self,epsabs=1.49e-8,epsrel=1.49e-8):
+	def set_options(self,epsabs=1.49e-8,epsrel=1.49e-8): #1.49e-8
 		self._epsabs = epsabs
 		self._epsrel = epsrel
 		return
@@ -104,6 +105,41 @@ class Integrate(object):
 		return self.f(x,*args)
 		
 
-
-
+def get_angles(ras,dec,ras_d = np.pi+96.4*np.pi/180., dec_d = 29.3*np.pi/180.):
+	"""
+	For a fixed choice of coordinates of centre of the universe sets the 
+	angles along which the geodesics will be solved. Centre direction corresponds 
+	to the dipole axis hence d subscript for its declination and right ascension. 
+	The following relationships between right ascention, declination and 
+	theta, phi coordinates of the LTB model hold:
+	theta = pi/2- dec where -pi/2 <= dec <= pi/2
+	phi   = ras       where 0 <= ras < 2pi
+	ras:
+		is in degrees
+	dec:
+		is in degrees
+	gammas:
+	       the angle between the tangent vector to the geodesic and a unit 
+	       vector pointing from the observer to the void centre.
+	ras_d, dec_d:
+	      are the right ascension and declination of the void center i.e dipole
+	returns:
+	        dec, ras, gammas
+	        dec = bee , ras = ell (in radians)
+	"""
+	#pi = np.pi
+	#dec_d = 29.3*pi/180.
+	#ras_d = pi+96.4*pi/180.
+	
+	#num_pt = 1 #3 #123
+	#dec = np.linspace(-pi/2.,pi/2.,num_pt,endpoint=True)
+	#ras = np.linspace(0.,2.*pi,num_pt,endpoint=False)
+	#ras, dec = np.loadtxt("pixel_center_galactic_coord_12288.dat",unpack=True)
+	#convert to radians
+	ras = np.pi*ras/180.
+	dec = np.pi*dec/180.
+	#dec, ras = np.meshgrid(dec,ras)
+	gammas = np.arccos( np.sin(dec)*np.sin(dec_d) + 
+	                    np.cos(dec)*np.cos(dec_d)*np.cos(ras-ras_d))
+	return  ras, dec, gammas #dec.flatten(), ras.flatten(), gammas.flatten()
 
