@@ -283,8 +283,25 @@ def get_angles():
 declination, Rascension, gammas  = get_angles()
 
 z_of_gamma = np.empty_like(gammas)
-age_central = sp_center_t(1100.)
-z_of_gamma = 1100. - (age_central-sp_t_vec.ev(gammas,1100.))/sp_t_vec.ev(gammas,1100.,dy=1)
+z_star = 1100.
+#age_central = sp_center_t(z_star)
+age_central = sp_t_vec.ev(0.,z_star)
+@Findroot
+def z_at_tdec(z,gamma):
+	return sp_t_vec.ev(gamma,z)/age_central - 1.
+
+z_at_tdec.set_options(xtol=1e-8,rtol=1e-8)
+z_at_tdec.set_bounds(z_star-20.,z_star+20.) 
+#Because Job lib can not pickle z_at_tdec.root directly
+def z_at_tdec_root(gamma):
+	return z_at_tdec.root(gamma)
+
+z_of_angles = Parallel(n_jobs=num_cores,verbose=0)(delayed(z_at_tdec_root)(gamma) for gamma in angles)
+z_of_angles = np.asarray(z_of_angles)
+
+z_of_angles_sp = spline_1d(angles,z_of_angles)
+z_of_gamma = z_of_angles_sp(gammas) 
+#z_of_gamma = 1100. - (age_central-sp_t_vec.ev(gammas,1100.))/sp_t_vec.ev(gammas,1100.,dy=1)
 np.savetxt("zw_of_gamma_1000.dat",z_of_gamma)
 
 
