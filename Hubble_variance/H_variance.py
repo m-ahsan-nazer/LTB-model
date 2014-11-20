@@ -201,24 +201,33 @@ sigma_out = np.zeros((radii.size,ell_hp.size))
 
 num_cores = mp.cpu_count()-7
 
+
 for radius, i in zip(radii,xrange(radii.size)):
 	shell_index = np.where(dist_comp < radius)[0][-1]
-	cz = cz_comp
+	cz = cz_lg #cz_comp
 	sigma = sigma_comp
 	
-	Hs_sigma_in = Parallel(n_jobs=num_cores,verbose=5)(delayed(smear_loop)(
-                  cz,sigma,shell_index,coords[0],coords[1],inner=True)
-                  for coords in zip(ell_hp,bee_hp))
-	Hs_sigma_in = np.asarray(Hs_sigma_in)
-	Hs_in[i,:] = Hs_sigma_in[:,0]
-	sigma_in[i,:] = Hs_sigma_in[:,1]
+#	Hs_sigma_in = Parallel(n_jobs=num_cores,verbose=0)(delayed(smear_loop)(
+#                  cz,sigma,shell_index,coords[0],coords[1],inner=True)
+#                  for coords in zip(ell_hp,bee_hp))
+#	Hs_sigma_in = np.asarray(Hs_sigma_in)
+#	Hs_in[i,:] = Hs_sigma_in[:,0]
+#	sigma_in[i,:] = Hs_sigma_in[:,1]
+
+#	Hs_sigma_out = Parallel(n_jobs=num_cores,verbose=0)(delayed(smear_loop)(
+#                  cz,sigma,shell_index,coords[0],coords[1],inner=False)
+#                  for coords in zip(ell_hp,bee_hp))
+#	Hs_sigma_out = np.asarray(Hs_sigma_out)
+#	Hs_out[i,:] = Hs_sigma_out[:,0]
+#	sigma_out[i,:] = Hs_sigma_out[:,1]
+	
+	#serial version
+	for j in xrange(ell_hp.size):
+		Hs_in[i,j], sigma_in[i,j] = smear_loop(cz, sigma,shell_index, ell_hp[j],
+		                                       bee_hp[j], inner=True)
+		Hs_out[i,j], sigma_out[i,j] = smear_loop(cz, sigma,shell_index, ell_hp[j],
+		                                       bee_hp[j], inner=False)    	
     
-	Hs_sigma_out = Parallel(n_jobs=num_cores,verbose=5)(delayed(smear_loop)(
-                  cz,sigma,shell_index,coords[0],coords[1],inner=False)
-                  for coords in zip(ell_hp,bee_hp))
-	Hs_sigma_out = np.asarray(Hs_sigma_out)
-	Hs_out[i,:] = Hs_sigma_out[:,0]
-	sigma_out[i,:] = Hs_sigma_out[:,1]
     
 import sys
 for radius, i in zip(radii,xrange(radii.size)):
