@@ -172,7 +172,7 @@ import multiprocessing as mp
 
 ell_hp, bee_hp = get_healpix_coords()
 
-def smear_loop(cz, sigma,shell_index, ell_hp, bee_hp, inner=True):
+def wrap_smear(cz, sigma,shell_index, ell_hp, bee_hp, inner=True):
 	"""
 	In the smearing function only cz, sigma changed as reference frames are 
 	changed the other quantities are simply those from the composite sample
@@ -199,36 +199,33 @@ sigma_in  = np.zeros((radii.size,ell_hp.size))
 Hs_out    = np.zeros((radii.size,ell_hp.size))
 sigma_out = np.zeros((radii.size,ell_hp.size))
 
-num_cores = mp.cpu_count()-7
+num_cores = mp.cpu_count()-1
 
-
-for radius, i in zip(radii,xrange(radii.size)):
+def smear_loop(i,radius):
 	shell_index = np.where(dist_comp < radius)[0][-1]
-	cz = cz_lg #cz_comp
+	cz = cz_comp #cz_lg #cz_comp
 	sigma = sigma_comp
 	
-#	Hs_sigma_in = Parallel(n_jobs=num_cores,verbose=0)(delayed(smear_loop)(
-#                  cz,sigma,shell_index,coords[0],coords[1],inner=True)
-#                  for coords in zip(ell_hp,bee_hp))
-#	Hs_sigma_in = np.asarray(Hs_sigma_in)
-#	Hs_in[i,:] = Hs_sigma_in[:,0]
-#	sigma_in[i,:] = Hs_sigma_in[:,1]
-
-#	Hs_sigma_out = Parallel(n_jobs=num_cores,verbose=0)(delayed(smear_loop)(
-#                  cz,sigma,shell_index,coords[0],coords[1],inner=False)
-#                  for coords in zip(ell_hp,bee_hp))
-#	Hs_sigma_out = np.asarray(Hs_sigma_out)
-#	Hs_out[i,:] = Hs_sigma_out[:,0]
-#	sigma_out[i,:] = Hs_sigma_out[:,1]
-	
-	#serial version
+	Hs_in, sigma_in, Hs_out, sigma_out = \
+	                                  [np.zeros(ell_hp.size) for i in (1,2,3,4)]
 	for j in xrange(ell_hp.size):
-		Hs_in[i,j], sigma_in[i,j] = smear_loop(cz, sigma,shell_index, ell_hp[j],
+		Hs_in[j], sigma_in[j] = wrap_smear(cz, sigma,shell_index, ell_hp[j],
 		                                       bee_hp[j], inner=True)
-		Hs_out[i,j], sigma_out[i,j] = smear_loop(cz, sigma,shell_index, ell_hp[j],
-		                                       bee_hp[j], inner=False)    	
-    
-    
+		Hs_out[j], sigma_out[j] = wrap_smear(cz, sigma,shell_index, ell_hp[j],
+		                                       bee_hp[j], inner=False) 
+	return np.asarray([Hs_in, sigma_in, Hs_out, sigma_out])
+
+
+Hs_sigma = Parallel(n_jobs=num_cores,verbose=5)(delayed(smear_loop)(
+                  i,radius) for radius, i in zip(radii,xrange(radii.size)))
+
+Hs_sigma  = np.asarray(Hs_sigma)
+
+Hs_in     = Hs_sigma[:,0]
+sigma_in  = Hs_sigma[:,1]
+Hs_out    = Hs_sigma[:,2]
+sigma_out = Hs_sigma[:,3]
+
 import sys
 for radius, i in zip(radii,xrange(radii.size)):
 	cls_in = hp.sphtfunc.anafast(Hs_in[i,:],lmax=3,pol=False)
