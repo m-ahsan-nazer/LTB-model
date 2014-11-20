@@ -6,14 +6,14 @@ import healpy as hp
 #v = cz (km/sec)   d (/h Mpc)  v_pec (km/s)   sigma_v   l (degrees) b (degrees)
 #The redshifts are given in the reference frame of the sun
 
-cz_cmb, d_cmb, vpec_cmb, sigma_cmb, ell_cmb, bee_cmb = \
+cz_comp, dist_comp, vpec_comp, sigma_comp, ell_comp, bee_comp = \
 np.loadtxt("COMPOSITEn-survey-dsrt.dat",unpack=True)
 
 #Convert from distance to H uncertainty
-sigma_cmb = sigma_cmb / 100.
+sigma_comp = sigma_comp / 100.
 #Angles are always in radians in this code
-ell_cmb = ell_cmb*np.pi/180.
-bee_cmb = bee_cmb*np.pi/180.
+ell_comp = ell_comp*np.pi/180.
+bee_comp = bee_comp*np.pi/180.
 
 def boost(cz,v,ell,bee,l,b):
 	"""
@@ -93,84 +93,128 @@ def smear(cz,r,sigma,ell,bee,ell_hp, bee_hp,sigma_theta=25.*np.pi/180.,weight=Fa
 	
 	return H_alpha, bar_sigma_alpha 
 
+
+def get2_Hs_sigmas_rs(indices,binning_type,cz,r,sigma):
+	"""
+	Uses function get_Hs_sigmas_rs for a choice of binning
+	returns:
+	        Hs, sigma_s, bar_rs
+	"""
+	Hs, sigma_s, bar_rs = [ np.zeros(binning_type.size-1) for i in (1,2,3) ]
+	
+	a = indices[0]
+	b = indices[1]
+	
+	Hs[0], sigma_s[0], bar_rs[0] = get_Hs_sigmas_rs(
+	                                      cz=cz[a:b], r=r[a:b],sigma=sigma[a:b])
+
+	for i in xrange(1,binning_type.size-1):
+		a = indices[i]+1
+		b = indices[i+1]+1
+		Hs[i], sigma_s[i], bar_rs[i] = get_Hs_sigmas_rs(
+	                      cz=cz[a:b],
+	                      r=r[a:b],
+	                      sigma=sigma[a:b]
+	                      )
+	return  Hs, sigma_s, bar_rs
+
 # 12 edges to make 11 shells
 binning_1 = np.array([ 2.25, 12.50,25.00,37.50,50.00,62.50,75.00,87.50,100.00,112.50,156.25,417.44])
 binning_2 = np.array([ 6.25,18.75,31.25 ,43.75,56.25,68.75 ,81.25,93.75 ,106.25,118.75, 156.25,417.44])
 
-indices_1 = np.array([np.where(d_cmb <= r_val)[0][-1] for r_val in binning_1])
-indices_2 = np.array([np.where(d_cmb <= r_val)[0][-1] for r_val in binning_2])
+indices_1 = np.array([np.where(dist_comp <= r_val)[0][-1] for r_val in binning_1])
+indices_2 = np.array([np.where(dist_comp <= r_val)[0][-1] for r_val in binning_2])
 
-a = indices_1[0]
-b = indices_1[1]
-Hs, sigma_s, bar_rs = get_Hs_sigmas_rs( cz_cmb[a:b], d_cmb[a:b],sigma_cmb[a:b])
-print b-a, binning_1[0], bar_rs, Hs, sigma_s
-for i in xrange(1,binning_1.size-1):
-	a = indices_1[i]+1
-	b = indices_1[i+1]+1
-	Hs, sigma_s, bar_rs = get_Hs_sigmas_rs(
-	                      cz_cmb[a:b],
-	                      d_cmb[a:b],
-	                      sigma_cmb[a:b]
-	                      )
+Hs_cmb, sigma_s_cmb, bar_rs_cmb = get2_Hs_sigmas_rs(indices=indices_1,binning_type=binning_1,
+                                       cz=cz_comp,r=dist_comp,sigma=sigma_comp)
 
-	print b-a, binning_1[i], bar_rs, Hs, sigma_s
+print "cmb frame, binning one"
+print bar_rs_cmb,"\n", Hs_cmb,"\n", sigma_s_cmb
 
 from H_parameters import *
-cz_sun = boost(cz=cz_cmb,v=-v_cmb,ell=ell_cmb,bee=bee_cmb,l=l_cmb,b=b_cmb)
-cz_lg  = boost(cz=cz_sun,v=v_lg,ell=ell_cmb,bee=bee_cmb,l=l_lg,b=b_lg)
+#boost to local group frame
+cz_sun = boost(cz=cz_comp,v=-v_cmb,ell=ell_comp,bee=bee_comp,l=l_cmb,b=b_cmb)
+cz_lg  = boost(cz=cz_sun,v=v_lg,ell=ell_comp,bee=bee_comp,l=l_lg,b=b_lg)
 
-print "*******************************************************"
-a = indices_1[0]
-b = indices_1[1]
-Hs, sigma_s, bar_rs = get_Hs_sigmas_rs( cz_lg[a:b], d_cmb[a:b],sigma_cmb[a:b])
-print b-a, binning_1[0], bar_rs, Hs, sigma_s
-for i in xrange(1,binning_1.size-1):
-	a = indices_1[i]+1
-	b = indices_1[i+1]+1
-	Hs, sigma_s, bar_rs = get_Hs_sigmas_rs(
-	                      cz_lg[a:b],
-	                      d_cmb[a:b],
-	                      sigma_cmb[a:b]
-	                      )
+Hs_lg, sigma_s_lg, bar_rs_lg = get2_Hs_sigmas_rs(indices=indices_1,binning_type=binning_1,
+                                       cz=cz_lg,r=dist_comp,sigma=sigma_comp)
 
-	print b-a, binning_1[i], bar_rs, Hs, sigma_s
-
-print "******************************************************"
-
-a = indices_2[0]
-b = indices_2[1]
-Hs, sigma_s, bar_rs = get_Hs_sigmas_rs( cz_cmb[a:b], d_cmb[a:b],sigma_cmb[a:b])
-print b-a, binning_2[0], bar_rs, Hs, sigma_s
-for i in xrange(1,binning_1.size-1):
-	a = indices_2[i]+1
-	b = indices_2[i+1]+1
-	Hs, sigma_s, bar_rs = get_Hs_sigmas_rs(
-	                      cz_cmb[a:b],
-	                      d_cmb[a:b],
-	                      sigma_cmb[a:b]
-	                      )
-
-	print b-a, binning_2[i], bar_rs, Hs, sigma_s
-
-from H_parameters import *
-cz_sun = boost(cz=cz_cmb,v=-v_cmb,ell=ell_cmb,bee=bee_cmb,l=l_cmb,b=b_cmb)
-cz_lg  = boost(cz=cz_sun,v=v_lg,ell=ell_cmb,bee=bee_cmb,l=l_lg,b=b_lg)
-
-print "*******************************************************"
-a = indices_2[0]
-b = indices_2[1]
-Hs, sigma_s, bar_rs = get_Hs_sigmas_rs( cz_lg[a:b], d_cmb[a:b],sigma_cmb[a:b])
-print b-a, binning_2[0], bar_rs, Hs, sigma_s
-for i in xrange(1,binning_2.size-1):
-	a = indices_2[i]+1
-	b = indices_2[i+1]+1
-	Hs, sigma_s, bar_rs = get_Hs_sigmas_rs(
-	                      cz_lg[a:b],
-	                      d_cmb[a:b],
-	                      sigma_cmb[a:b]
-	                      )
-
-	print b-a, binning_2[i], bar_rs, Hs, sigma_s
+print "lg frame, binning one"
+print bar_rs_lg,"\n", Hs_lg,"\n", sigma_s_lg
 
 
+print "cmb frame, binning two"
+Hs, sigma_s, bar_rs = get2_Hs_sigmas_rs(indices=indices_2,binning_type=binning_2,
+                                       cz=cz_comp,r=dist_comp,sigma=sigma_comp)
+print bar_rs,"\n", Hs,"\n", sigma_s
+
+print "lg frame, binning two"
+Hs, sigma_s, bar_rs = get2_Hs_sigmas_rs(indices=indices_2,binning_type=binning_2,
+                                       cz=cz_lg,r=dist_comp,sigma=sigma_comp)
+print bar_rs,"\n", Hs,"\n", sigma_s
+
+from matplotlib import pylab as plt
+#fig = plt.figure()
+#plt.plot(bar_rs_cmb[1:-1],(Hs_cmb[1:-1]-Hs_cmb[-1])/Hs_cmb[-1],label="deltaH cmb"+
+#" "+str((Hs_cmb[0]-Hs_cmb[-1])/Hs_cmb[-1]) )
+#plt.legend(loc="best")
+#fig = plt.figure()
+#plt.plot(bar_rs_lg[1:-1],(Hs_lg[1:-1]-Hs_lg[-1])/Hs_lg[-1],label="deltaH lg"+
+#" "+str((Hs_lg[0]-Hs_lg[-1])/Hs_lg[-1]) )
+#plt.legend(loc="best")
+#plt.show()
+
+
+from joblib import Parallel, delayed
+from joblib.pool import has_shareable_memory
+import multiprocessing as mp
+
+ell_hp, bee_hp = get_healpix_coords()
+
+shell_index = np.where(dist_comp < 60)[0][-1]
+print "shell_index ", shell_index, dist_comp[shell_index]
+def smear_loop(ell_hp, bee_hp):
+	return smear(cz_comp[:shell_index],dist_comp[:shell_index],
+	            sigma_comp[:shell_index],ell_comp[:shell_index],bee_comp[:shell_index],
+	            ell_hp, bee_hp,
+	            sigma_theta=25.*np.pi/180.,weight=False)
+
+num_cores = mp.cpu_count()-7
+Hs_sigma = Parallel(n_jobs=num_cores,verbose=5)(delayed(smear_loop)(
+                    coords[0],coords[1]) for coords in zip(ell_hp,bee_hp))
+#print type(cz_si
+#cz, sigma = zip(*cz_sigma)
+Hs_sigma = np.asarray(Hs_sigma)
+Hs = Hs_sigma[:,0]
+sigma = Hs_sigma[:,1]
+print Hs
+print sigma
+cls_in = hp.sphtfunc.anafast(Hs,lmax=3)
+
+##################333
+######################
+######################
+def smear_loop(ell_hp, bee_hp):
+	return smear(cz_comp[shell_index:],dist_comp[shell_index:],
+	            sigma_comp[shell_index:],ell_comp[shell_index:],bee_comp[shell_index:],
+	            ell_hp, bee_hp,
+	            sigma_theta=25.*np.pi/180.,weight=False)
+
+num_cores = mp.cpu_count()-7
+Hs_sigma = Parallel(n_jobs=num_cores,verbose=5)(delayed(smear_loop)(
+                    coords[0],coords[1]) for coords in zip(ell_hp,bee_hp))
+#print type(cz_si
+#cz, sigma = zip(*cz_sigma)
+Hs_sigma = np.asarray(Hs_sigma)
+Hs = Hs_sigma[:,0]
+sigma = Hs_sigma[:,1]
+print Hs
+print sigma
+cls_out = hp.sphtfunc.anafast(Hs,lmax=3)
+
+print "cls ratio in"
+print cls_in/cls_in[1]
+
+print "cls ratio out"
+print cls_out/cls_out[1]
 
