@@ -58,7 +58,8 @@ def get_healpix_coords():
 	  the angular positions of healpix pixels in galactic coordinates
 	  in radians
 	"""
-	ell, bee = np.loadtxt("pixel_center_galactic_coord_12288.dat",unpack=True)
+	ell, bee = np.loadtxt("pixel_center_galactic_coord_3072.dat",unpack=True)
+	#ell, bee = np.loadtxt("pixel_center_galactic_coord_12288.dat",unpack=True)
 	
 	return ell*np.pi/180., bee*np.pi/180.
 
@@ -171,50 +172,63 @@ import multiprocessing as mp
 
 ell_hp, bee_hp = get_healpix_coords()
 
-shell_index = np.where(dist_comp < 60)[0][-1]
-print "shell_index ", shell_index, dist_comp[shell_index]
-def smear_loop(ell_hp, bee_hp):
-	return smear(cz_comp[:shell_index],dist_comp[:shell_index],
-	            sigma_comp[:shell_index],ell_comp[:shell_index],bee_comp[:shell_index],
+def smear_loop(cz, sigma,shell_index, ell_hp, bee_hp, inner=True):
+	"""
+	In the smearing function only cz, sigma changed as reference frames are 
+	changed the other quantities are simply those from the composite sample
+	"""
+	Hs = None
+	sigma_s = None
+	if ( inner ):
+		Hs, sigma_s =  smear(cz[:shell_index],dist_comp[:shell_index],
+		       sigma[:shell_index],ell_comp[:shell_index],bee_comp[:shell_index],
+	           ell_hp, bee_hp,
+	           sigma_theta=25.*np.pi/180.,weight=False)
+	else:
+		Hs, sigma_s =  smear(cz[shell_index:],dist_comp[shell_index:],
+	            sigma[shell_index:],ell_comp[shell_index:],bee_comp[shell_index:],
 	            ell_hp, bee_hp,
 	            sigma_theta=25.*np.pi/180.,weight=False)
+	
+	return Hs, sigma_s
+
+radii = np.array([12.5, 15., 20., 30., 40., 50., 60., 70., 80., 90., 100.])
+
+Hs_in     = np.zeros((radii.size,ell_hp.size))
+sigma_in  = np.zeros((radii.size,ell_hp.size))
+Hs_out    = np.zeros((radii.size,ell_hp.size))
+sigma_out = np.zeros((radii.size,ell_hp.size))
 
 num_cores = mp.cpu_count()-7
-Hs_sigma = Parallel(n_jobs=num_cores,verbose=5)(delayed(smear_loop)(
-                    coords[0],coords[1]) for coords in zip(ell_hp,bee_hp))
-#print type(cz_si
-#cz, sigma = zip(*cz_sigma)
-Hs_sigma = np.asarray(Hs_sigma)
-Hs = Hs_sigma[:,0]
-sigma = Hs_sigma[:,1]
-print Hs
-print sigma
-cls_in = hp.sphtfunc.anafast(Hs,lmax=3)
 
-##################333
-######################
-######################
-def smear_loop(ell_hp, bee_hp):
-	return smear(cz_comp[shell_index:],dist_comp[shell_index:],
-	            sigma_comp[shell_index:],ell_comp[shell_index:],bee_comp[shell_index:],
-	            ell_hp, bee_hp,
-	            sigma_theta=25.*np.pi/180.,weight=False)
+for radius, i in zip(radii,xrange(radii.size)):
+	shell_index = np.where(dist_comp < radius)[0][-1]
+	cz = cz_comp
+	sigma = sigma_comp
+	
+	Hs_sigma_in = Parallel(n_jobs=num_cores,verbose=5)(delayed(smear_loop)(
+                  cz,sigma,shell_index,coords[0],coords[1],inner=True)
+                  for coords in zip(ell_hp,bee_hp))
+	Hs_sigma_in = np.asarray(Hs_sigma_in)
+	Hs_in[i,:] = Hs_sigma_in[:,0]
+	sigma_in[i,:] = Hs_sigma_in[:,1]
+    
+	Hs_sigma_out = Parallel(n_jobs=num_cores,verbose=5)(delayed(smear_loop)(
+                  cz,sigma,shell_index,coords[0],coords[1],inner=False)
+                  for coords in zip(ell_hp,bee_hp))
+	Hs_sigma_out = np.asarray(Hs_sigma_out)
+	Hs_out[i,:] = Hs_sigma_out[:,0]
+	sigma_out[i,:] = Hs_sigma_out[:,1]
+    
+import sys
+for radius, i in zip(radii,xrange(radii.size)):
+	cls_in = hp.sphtfunc.anafast(Hs_in[i,:],lmax=3,pol=False)
+	cls_out = hp.sphtfunc.anafast(Hs_out[i,:],lmax=3,pol=False)
+	
+	cls_in  = cls_in/cls_in[1]
+	cls_out = cls_out/cls_out[1]
+	sys.stdout.write("%.3f   %.3f    %.3f  %.3f    %.3f  \n" %(radius, cls_in[2], cls_in[3]
+	, cls_out[2], cls_out[3]))
+	
 
-num_cores = mp.cpu_count()-7
-Hs_sigma = Parallel(n_jobs=num_cores,verbose=5)(delayed(smear_loop)(
-                    coords[0],coords[1]) for coords in zip(ell_hp,bee_hp))
-#print type(cz_si
-#cz, sigma = zip(*cz_sigma)
-Hs_sigma = np.asarray(Hs_sigma)
-Hs = Hs_sigma[:,0]
-sigma = Hs_sigma[:,1]
-print Hs
-print sigma
-cls_out = hp.sphtfunc.anafast(Hs,lmax=3)
-
-print "cls ratio in"
-print cls_in/cls_in[1]
-
-print "cls ratio out"
-print cls_out/cls_out[1]
 
