@@ -162,26 +162,31 @@ lons, lats = np.meshgrid(lon_hp*180./np.pi,90.-lat_hp*180./np.pi)
 plt.subplots_adjust(left=0.05,right=0.95,top=0.90,bottom=0.05,wspace=0.05,hspace=0.05)
 plt.suptitle(r"Top to bottom $r_0$: $12.5$, $\;20$, $\;40$, $\;60$ $\;h^{-1}$ Mpc. " 
               r"$($Local group Frame$)$ ",fontsize=16)
-m = Basemap(resolution='c',projection='moll',lon_0=180.,lat_0=0.,celestial=True)
+m = Basemap(resolution='c',projection='moll',lon_0=180.,lat_0=0.,celestial=False)
 num_contours = 11
 
 gratcolor='#696969'
 parallels = np.arange(-90.,30,30.)
-m.drawparallels(parallels,color=gratcolor,linewidth=.5,dashes=[1,1])#,labels=[1,2,3,4])
 meridians = np.arange(0.,210.,30.)
-m.drawmeridians(meridians,color=gratcolor,linewidth=.5,dashes=[1,1])
+def Par_and_mer():
+	m.drawparallels(parallels,color=gratcolor,linewidth=.5,dashes=[1,1])#,labels=[1,2,3,4
+	m.drawmeridians(meridians,color=gratcolor,linewidth=.5,dashes=[1,1])
+	return 
+
 for i,j in zip([0,2,4,6],[1,3,5,7]):
 	plt.subplot(4,2,j)
 	if ( j == 1 ):
 		plt.title(r"in",fontsize=16)
 	CS2 = m.contourf(lons,lats,H_map_in[i].transpose(),num_contours,
 	cmap=plt.cm.get_cmap('summer'),extend='both',latlon=True,edgecolors='k')
+	Par_and_mer()
 	
 	plt.subplot(4,2,j+1)
 	if ( j == 1 ):
 		plt.title(r"out",fontsize=16)
 	CS2 = m.contourf(lons,lats,H_map_out[i].transpose(),num_contours,
 	cmap=plt.cm.get_cmap('summer'),extend='both',latlon=True,edgecolors='k')
+	Par_and_mer()
 
 
 
