@@ -108,5 +108,42 @@ def get2_Hs_sigmas_rs(indices,binning_type,cz,r,sigma):
 	return  Hs, sigma_s, bar_rs
 
 
+def Pearson_corr_coeff(H_map, sigma, T_map, T_mean):
+	"""
+	Not optimized but written to match exactly the corresponding equation in paper.
+	
+	H_map:
+	    The Hubble constant map. It is 1d array and has size = number of pixels,
+	    which is chosen according to the desired resolution in healpy corresponding 
+	    to nside 16,32 or 64.
+	sigma:
+	    The uncertainty at each point in H_map. Dimension of sigma is same as H_map
+	T_map:
+	     Temperature map. It has same dimensions as H_map
+	T_mean:
+	     Mean temperature
+	returns:
+	     rho_HT
+	     The Pearson correlation coefficient calculated from H_map and T_map.
+	     See Eq. (12) in http://arxiv.org/abs/1201.5371v5
+	"""
+	
+	H_mean = np.sum(H_map/sigma**2) / np.sum(1./sigma**2)
+	
+	Np = np.sqrt(H_map.size)
+	Delta_H = H_map - H_mean
+	Delta_T = T_map - T_mean
+	
+	numer_rho_HT = np.sqrt(Np) * np.sum ( Delta_H / sigma**2 * Delta_T )
+	
+	denom_rho_HT = np.sqrt( np.sum(1./sigma**2) * np.sum( Delta_H**2/sigma**2) * 
+	                        np.sum(Delta_T**2) )
+	
+	rho_HT = numer_rho_HT / denom_rho_HT
+	return rho_HT
+
+
+
+
 
 
