@@ -130,7 +130,7 @@ def Pearson_corr_coeff(H_map, sigma, T_map, T_mean):
 	
 	H_mean = np.sum(H_map/sigma**2) / np.sum(1./sigma**2)
 	
-	Np = np.sqrt(H_map.size)
+	Np = H_map.size
 	Delta_H = H_map - H_mean
 	Delta_T = T_map - T_mean
 	
