@@ -143,6 +143,25 @@ def Pearson_corr_coeff(H_map, sigma, T_map, T_mean):
 	return rho_HT
 
 
+def boost_T(T0,v,ell,bee,l,b):
+	"""
+	remark:
+	    switching simultaneously ell with l and bee with b makes no difference
+	v:
+	  boost velocity in km/sec.
+	returns:
+	        The boosted temperature
+	        T' = T0/ gamma / (1 - v * cos(phi) ) 
+	        where phi is the angle between the data point and the boost direction
+	"""
+	#dimensionless velocity 
+	c = 299792.458 # km / sec
+	v = v/c
+	gamma = 1./np.sqrt(1. - v**2)
+	
+	cos_phi = np.sin(bee)*np.sin(b) + np.cos(bee)*np.cos(b)*np.cos(ell-l)
+	return T0/gamma/ (1 + v * cos_phi )
+
 
 
 
