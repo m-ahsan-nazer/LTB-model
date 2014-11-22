@@ -192,3 +192,38 @@ for i,j in zip([0,2,4,6],[1,3,5,7]):
 
 plt.show()
 
+
+####################################################################
+#check correlation between temperature and Hubble varance maps
+#for some reason Peter and Wiltshire et al use  Fixsen et al 1996 CMB monopole temperature
+Tnot = 2.728 #2.735
+T_map_sun = boost_T(T0=Tnot,v=-v_cmb,ell=ell_hp,bee=bee_hp,l=l_cmb,b=b_cmb)
+
+T_map_lg = boost_T(T0=Tnot,v=-v_lg,ell=ell_hp,bee=bee_hp,l=l_lg,b=b_lg)
+
+T_residual = T_map_sun - T_map_lg
+
+hp.remove_dipole(T_residual,verbose=True)
+
+hp.mollview(T_residual,flip='geo')
+plt.show()
+print "caution. In mollview the longitude run from -180 to 180 degrees but "
+print "In healpix the longitude runs from 0. to 360 degress."
+print "Thus add 180 degrees to the longitude here to get the healpix longitude."
+print "Longitudes in healpix are the same as in galactic coordinates only "
+print "the latitudes change. It is confusing."
+
+#testing the Pearson correlation coefficient function 
+print "shape of Hs_out ", np.shape(Hs_out)
+rho_HT = Pearson_corr_coeff(H_map = Hs_out[1,:], sigma=sigma_out[1,:], 
+                            T_map = T_residual, T_mean = T_residual.mean() )
+
+print "rho_HT (compare to Tabel III, third row first column ", rho_HT
+print "All numbers check out."
+
+
+
+
+
+
+
