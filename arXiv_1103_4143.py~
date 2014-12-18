@@ -330,6 +330,26 @@ def lum_dist(z,gamma,comp_dist):
 	
 	return DL4**0.25 - comp_dist
 
+#v = cz (km/sec)   d (/h Mpc)  v_pec (km/s)   sigma_v   l (degrees) b (degrees)
+comp_cz, comp_d, comp_vpec, comp_sigv, comp_ell, comp_bee = np.loadtxt("COMPOSITEn-survey-dsrt.dat",unpack=True)
+
+comp_ell_rad, comp_bee_rad, comp_gammas  = get_angles(comp_ell,comp_bee)
+
+wiltshire_model = open("wiltshire_model.dat",'w')
+wiltshire_model.write("cz [km/s]     dist [Mpc]   ell  bee \n")
+redshifts = np.zeros(len(comp_cz))
+
+from scipy.optimize import brentq
+i = 0
+for gamma, comp_dist in zip(comp_gammas,comp_d):
+	#redshift, junk = brentq(f=lum_dist,a=1e-4,b=2.,args=(gamma,comp_dist,),disp=True,full_output=True)
+	redshift, junk = brentq(f=lum_dist,a=0.,b=2.,args=(gamma,comp_dist,),disp=True,full_output=True)
+	redshifts[i] = redshift
+	wiltshire_model.write("%15.6f   %10.6f    %6.2f %6.2f \n" %(redshift*c/1e3, comp_dist, 
+	                   comp_ell[i], comp_bee[i]))
+	i = i+1
+wiltshire_model.close()
+
 #******************************************************************************
 #******************************************************************************
 
