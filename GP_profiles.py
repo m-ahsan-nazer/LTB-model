@@ -11,7 +11,7 @@
 from LTB_housekeeping import Integrate
 
 import numpy as np
-class GBH_MODEL():
+class GP_MODEL():
 	def __init__(self,H_in=0.6,H_out=0.7,H_not=0.7,Lambda=0.,Omega_in=0.33,
 	                  r0=2e3,delta_r=0.3):
 		self.c = 299792458. #ms^-1
@@ -33,6 +33,10 @@ class GBH_MODEL():
 		self.set_H0overc()
 		set_H0overc.set_options(epsabs=1.49e-16,epsrel=1.49e-12)
 		set_H0overc.set_limits(0.,1.)
+		
+		self.set_d_H0overc_dr()
+		set_d_H0overc_dr.set_options(epsabs=1.49e-16,epsrel=1.49e-12)
+		set_d_H0overc_dr.set_limits(0.,1.)
 
 	def OmegaM(self,r):
 		"""
@@ -77,19 +81,30 @@ class GBH_MODEL():
 	
 	@Integrate
 	def set_H0overc(self,RoverR0,OmegaM,OmegaX,OmegaC):
-		return 1./t0 / np.sqrt(OmegaM/RoverR0 + OmegaX/RoverR0**2 + OmegaC)
+		"""
+		Eq. (2.29) in http://arxiv.org/abs/1103.4143
+		[H0overc]=Mpc^-1
+		"""
+		return 1. / np.sqrt(OmegaM/RoverR0 + OmegaX/RoverR0**2 + OmegaC)
 
 	def H0overc(self,r):
 		"""
 		Eq. (2.29) in http://arxiv.org/abs/1103.4143
 		[H0overc]=Mpc^-1
 		"""
-		### General GBH model
-		#return_me = self.Hoverc_out+(self.Hoverc_in-self.Hoverc_out)*(1. - \
-		#np.tanh((1./2.)*(r-self.r0)/self.delta_r))/(1.+np.tanh((1./2.)*self.r0/self.delta_r))
-		#constrainted GBH model
-		return_me = self.Hoverc_not*( 1./(1.-self.Omega_M(r)) - self.Omega_M(r)/(
-		1.-self.Omega_M(r))**1.5*np.arcsinh(np.sqrt(1./self.Omega_M(r)-1.)) ) 
+		return_me = set_H0overc.integral(OmegaM,OmegaX,OmegaC)/self.t0
+		return return_me
+
+	@Integrate
+	def set_d_H0overc_dr(self,RoverR0,OmegaM,OmegaX,OmegaC):
+		"""
+		Eq. (2.29) in http://arxiv.org/abs/1103.4143
+		[H0overc]=Mpc^-1
+		"""
+		return_me =  -0.5 / (OmegaM/RoverR0 + OmegaX/RoverR0**2 + OmegaC)**(1.5) * \
+		             (self.d_OmegaM_dr/RoverR0 + self.d_OmegaX_dr/RoverR0**2 + 
+		              (-self.d_OmegaM_dr - self.d_OmegaX_dr)
+		             )
 		return return_me
 
 	def d_H0overc_dr(self,r):
@@ -97,12 +112,7 @@ class GBH_MODEL():
 		Evaluates partial derivative of H0overc(r) w.r.t r
 		[d_H0overc_dr]=Mpc^-2
 		"""
-		### General GBH model
-		#return_me = -(1./2.)*(self.Hoverc_in-self.Hoverc_out)*(1.-np.tanh((1./2.)* \
-		#(r-self.r0)/self.delta_r)**2)/(self.delta_r*(1.+np.tanh((1./2.)*self.r0/self.delta_r)))
-		#constrainted GBH model
-		return_me = 0.5*self.d_Omega_M_dr(r)/(1.-self.Omega_M(r))/self.Omega_M(r) \
-		* (self.Omega_M(r)*self.H0overc(r)+2.*self.H0overc(r)-2*self.Hoverc_not)
+		return_me = set_d_H0overc_dr.integral(OmegaM,OmegaX,OmegaC)/self.t0
 		return return_me
 
 
@@ -110,16 +120,16 @@ class GBH_MODEL():
 		"""
 		[LTB_M] = Mpc
 		"""
-		return_me = self.H0overc(r)**2*self.Omega_M(r)*r**3 / 2.
+		return_me = self.H0overc(r)**2*self.OmegaM(r)*r**3 / 2.
 		return return_me
 
 	def dLTB_M_dr(self,r):
 		"""
 		[dLTB_M_dr] is dimensionless
 		"""
-		return_me = self.H0overc(r)*self.d_H0overc_dr(r)*self.Omega_M(r)*r**3 + \
-	            self.H0overc(r)**2*self.d_Omega_M_dr(r)*r**3 /2. + \
-	            3./2.*self.H0overc(r)**2*self.Omega_M(r)*r**2
+		return_me = self.H0overc(r)*self.d_H0overc_dr(r)*self.OmegaM(r)*r**3 + \
+	            self.H0overc(r)**2*self.d_OmegaM_dr(r)*r**3 /2. + \
+	            3./2.*self.H0overc(r)**2*self.OmegaM(r)*r**2
 		return return_me
 
 	def LTB_E(self,r):
@@ -133,7 +143,7 @@ class GBH_MODEL():
 		#return_me = r**2.*( H0overc(r)**2 - 2.*LTB_M(r)/r**3 - Lambda/3. )/2.
 		#the above should produce the same result as the expression used for 
 		# k(r) in the paper given below. uncomment and use either one.
-		return_me = -0.5*self.H0overc(r)**2*(self.Omega_M(r)-1.)*r**2
+		return_me = -0.5*self.H0overc(r)**2*(self.OmegaM(r)+self.OmegaX(r)-1.)*r**2
 		return return_me
 
 	def dLTB_E_dr(self,r):
@@ -143,9 +153,9 @@ class GBH_MODEL():
 		     See LTB_E(r) for the two choices given below
 		"""
 		#return_me = 2.*LTB_E(r)/r + r**2 * (H0overc(r)*d_H0overc_dr(r) - dLTB_M_dr(r)/r**3 + 3.*LTB_M(r)/r**4)
-		return_me = -self.d_H0overc_dr(r)*self.H0overc(r)*(self.Omega_M(r)-1.)*r**2 \
-	            -0.5*self.H0overc(r)**2*self.d_Omega_M_dr(r)*r**2 \
-	            -self.H0overc(r)**2*(self.Omega_M(r)-1.)*r
+		return_me = -self.d_H0overc_dr(r)*self.H0overc(r)*(self.Omega_M(r)+self.OmegaX(r)-1.)*r**2 \
+	            -0.5*self.H0overc(r)**2*(self.d_OmegaM_dr(r)+self.d_OmegaX_dr(r))*r**2 \
+	            -self.H0overc(r)**2*(self.Omega_M(r)+self.OmegaX(r)-1.)*r
 		return return_me
 
 
