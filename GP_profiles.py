@@ -12,8 +12,14 @@ from LTB_housekeeping import Integrate
 
 import numpy as np
 class GP_MODEL():
-	def __init__(self,H_in=0.6,H_out=0.7,H_not=0.7,Lambda=0.,Omega_in=0.33,
-	                  r0=2e3,delta_r=0.3):
+	"""
+	A class for the LTB models used in J. Grande and L. Perivolaropoulos 
+	Phys. Rev. D. 84:023514, 2011. 
+	"""
+	def __init__(self,H_in=0.6,H_out=0.7,H_not=0.7,Lambda=0.,
+	             OmegaM_in=0.301,OmegaM_out=1., 
+	             OmegaX_in = 0.699,OmegaX_out=0.,
+	             r0=3.37e3,delta_r=0.35):
 		self.c = 299792458. #ms^-1
 		self.Mpc = 1.
 		self.Gpc = 1e3*self.Mpc
@@ -30,13 +36,13 @@ class GP_MODEL():
 		self.r0 =r0  #2.5*Gpc #3.5 #0.33 #0.3-4.5 units Gpc
 		self.delta_r = delta_r #0.2*r0 # 0.1r0-0.9r0
 		
-		self.set_H0overc()
-		set_H0overc.set_options(epsabs=1.49e-16,epsrel=1.49e-12)
-		set_H0overc.set_limits(0.,1.)
+		#self.set_H0overc()
+		self.set_H0overc.set_options(epsabs=1.49e-16,epsrel=1.49e-12)
+		self.set_H0overc.set_limits(0.,1.)
 		
-		self.set_d_H0overc_dr()
-		set_d_H0overc_dr.set_options(epsabs=1.49e-16,epsrel=1.49e-12)
-		set_d_H0overc_dr.set_limits(0.,1.)
+		#self.set_d_H0overc_dr()
+		self.set_d_H0overc_dr.set_options(epsabs=1.49e-16,epsrel=1.49e-12)
+		self.set_d_H0overc_dr.set_limits(0.,1.)
 
 	def OmegaM(self,r):
 		"""
