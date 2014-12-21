@@ -77,17 +77,11 @@ class Integrate(object):
 		self._b=b
 	
 	def integral(self,*args):
+		if args: self._args = args
 
-		if  not args:
-			self._integral, self._abserr = self._quad(func=self.f,a=self._a,b=self._b,
-		                       args=self._args ,epsabs=self._epsabs,
-		                       epsrel=self._epsrel)
-		else:
-			self._args = args
-			self._integral, self._abserr = self._quad(func=self.f,a=self._a,b=self._b,
-		                       args=self._args ,epsabs=self._epsabs,
-		                       epsrel=self._epsrel)	
-		
+		self._integral, self._abserr = self._quad(func=self.f,a=self._a,
+		b=self._b,args=self._args ,epsabs=self._epsabs, epsrel=self._epsrel)	
+
 		return self._integral
 	
 	@property
