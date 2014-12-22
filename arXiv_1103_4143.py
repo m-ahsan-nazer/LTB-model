@@ -8,7 +8,8 @@ from __future__ import division
 import numpy as np
 from LTB_Sclass_v2 import LTB_ScaleFactor
 from LTB_Sclass_v2 import LTB_geodesics, sample_radial_coord
-from LTB_housekeeping import *
+from LTB_housekeeping import c, Mpc, Gpc, ageMpc
+from LTB_housekeeping import Integrate
 from GP_profiles import GP_MODEL
 
 from scipy.interpolate import UnivariateSpline as spline_1d
@@ -25,15 +26,33 @@ OmegaM_in = 1. - OmegaX_in
 test_GP = GP_MODEL(H_in=0.6,H_out=0.7,H_not=0.7,Lambda=0.,
 	               OmegaM_in=OmegaM_in,OmegaM_out=1., 
 	               OmegaX_in = OmegaX_in,OmegaX_out=0.,
-	               r0=3.37e3,delta_r=0.35)
+	               r0=3.37*Gpc,delta_r=0.35,age=13.7*ageMpc)
 print test_GP.__doc__
 
-test_r_vals = np.array([0.,0.3,0.9,1.1,10.,2.e3,2.1e3,1e4])
+test_r_vals = np.array([0.,0.3,0.9,1.1,10.,2.e3,3.36e3,3.37e3,3.38e3,1e4])
 print test_GP.OmegaM(test_r_vals)
 print "d_OmegaM_dr"
 print test_GP.d_OmegaM_dr(test_r_vals)
 print "OmegaX"
 print test_GP.OmegaX(test_r_vals)
+print "d_OmegaX_dr"
+print test_GP.d_OmegaX_dr(test_r_vals)
+print "testing intermediate"
+@Integrate
+def set_H0overc(RoverR0,OmegaM,OmegaX,OmegaC):
+	"""
+	Eq. (2.29) in http://arxiv.org/abs/1103.4143
+	[H0overc]=Mpc^-1
+	"""
+	return np.sqrt(RoverR0) / np.sqrt(OmegaM + OmegaX*RoverR0**3 + OmegaC*RoverR0)
+
+print set_H0overc.integral(0.2,0.8,0.)
+print "H0overc"
+#print test_GP.H0overc(test_GP.OmegaM(test_r_vals[0]),
+#                      test_GP.OmegaX(test_r_vals[0]),
+#                      1.-test_GP.OmegaM(test_r_vals[0])-test_GP.OmegaX(test_r_vals[0])
+#                      )
+print test_GP.H0overc(0.2,0.8,0.)
 #c = 299792458. #ms^-1
 #Mpc = 1.
 #Gpc = 1e3*Mpc

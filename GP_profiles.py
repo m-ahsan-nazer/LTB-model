@@ -8,6 +8,7 @@
 # clutter in the main program arXiv_1103_4143.py
 #
 ###############################################################################
+from LTB_housekeeping import c, Mpc, Gpc, ageMpc
 from LTB_housekeeping import Integrate
 
 import numpy as np
@@ -19,31 +20,48 @@ class GP_MODEL():
 	def __init__(self,H_in=0.6,H_out=0.7,H_not=0.7,Lambda=0.,
 	             OmegaM_in=0.301,OmegaM_out=1., 
 	             OmegaX_in = 0.699,OmegaX_out=0.,
-	             r0=3.37e3,delta_r=0.35):
-		self.c = 299792458. #ms^-1
-		self.Mpc = 1.
-		self.Gpc = 1e3*self.Mpc
-		self.H_in = H_in #0.5-0.85 units km s^-1 Mpc^-1
-		self.Hoverc_in = H_in*1e5/self.c #units of Mpc^-1
-		self.H_out = H_out = 0.9 #0.3-0.7 units km s^-1 Mpc^-1
-		self.Hoverc_out = H_out*1e5/self.c #units of Mpc^-1
-		self.H_not = H_not #0.5-0.95 units km s^-1 Mpc^-1
-		self.Hoverc_not = H_not*1e5/self.c #units of Mpc^-1
-		self.OmegaM_in = Omega_in #0.05-0.35
-		#if Lambda is nonzero check equations for correct units. [Lambda]=[R]^-2
-		self.Lambda = Lambda  #0.7
-		self.OmegaM_out = 0.99999 - self.Lambda
-		self.r0 =r0  #2.5*Gpc #3.5 #0.33 #0.3-4.5 units Gpc
-		self.delta_r = delta_r #0.2*r0 # 0.1r0-0.9r0
+	             r0=3.37*Gpc,delta_r=0.35,age=13.7*ageMpc):
 		
+		self.set_params(H_in, H_out, H_not, Lambda,
+	             OmegaM_in, OmegaM_out, 
+	             OmegaX_in, OmegaX_out,
+	             r0, delta_r,age)
+		
+		from functools import wraps
 		#self.set_H0overc()
-		self.set_H0overc.set_options(epsabs=1.49e-16,epsrel=1.49e-12)
-		self.set_H0overc.set_limits(0.,1.)
-		
+		self.Integrand_H0overc = Integrate(self.Integrand_H0overc)
+		self.Integrand_H0overc.set_options(epsabs=1.49e-16,epsrel=1.49e-12)
+		self.Integrand_H0overc.set_limits(0.,1.)
+		#print "limit of set_H0overc", self.set_H0overc._b
 		#self.set_d_H0overc_dr()
 		self.set_d_H0overc_dr.set_options(epsabs=1.49e-16,epsrel=1.49e-12)
 		self.set_d_H0overc_dr.set_limits(0.,1.)
-
+	
+	def set_params(self,H_in, H_out, H_not, Lambda,
+	               OmegaM_in, OmegaM_out, 
+	               OmegaX_in, OmegaX_out,
+	               r0, delta_r,age):
+		"""
+		Set the required parameters for the GP models
+		"""
+		self.H_in = H_in #0.5-0.85 units km s^-1 Mpc^-1
+		self.Hoverc_in = H_in*1e5/c #units of Mpc^-1
+		self.H_out = H_out  #0.3-0.7 units km s^-1 Mpc^-1
+		self.Hoverc_out = H_out*1e5/c #units of Mpc^-1
+		self.H_not = H_not #0.5-0.95 units km s^-1 Mpc^-1
+		self.Hoverc_not = H_not*1e5/c #units of Mpc^-1
+		self.OmegaM_in = OmegaM_in #0.05-0.35
+		#if Lambda is nonzero check equations for correct units. [Lambda]=[R]^-2
+		self.Lambda = Lambda  #0.7
+		self.OmegaM_out = 0.99999 - self.Lambda
+		self.OmegaX_in = OmegaX_in
+		self.OmegaX_out = OmegaX_out
+		#self.OmegaC = 1. - Omega
+		
+		self.r0 =r0  #2.5*Gpc #3.5 #0.33 #0.3-4.5 units Gpc
+		self.delta_r = delta_r #0.2*r0 # 0.1r0-0.9r0
+		self.t0 = age
+		
 	def OmegaM(self,r):
 		"""
 		Eq. (2.27) in http://arxiv.org/abs/0802.1523
@@ -85,20 +103,19 @@ class GP_MODEL():
 		np.tanh((1./2.)*self.r0/self.delta_r)))
 		return return_me
 	
-	@Integrate
-	def set_H0overc(self,RoverR0,OmegaM,OmegaX,OmegaC):
+	def Integrand_H0overc(self,RoverR0,OmegaM,OmegaX,OmegaC):
 		"""
 		Eq. (2.29) in http://arxiv.org/abs/1103.4143
 		[H0overc]=Mpc^-1
 		"""
-		return 1. / np.sqrt(OmegaM/RoverR0 + OmegaX/RoverR0**2 + OmegaC)
+		return np.sqrt(RoverR0) / np.sqrt(OmegaM + OmegaX*RoverR0**3 + OmegaC*RoverR0)
 
-	def H0overc(self,r):
+	def H0overc(self,OmegaM,OmegaX,OmegaC):
 		"""
 		Eq. (2.29) in http://arxiv.org/abs/1103.4143
 		[H0overc]=Mpc^-1
 		"""
-		return_me = set_H0overc.integral(OmegaM,OmegaX,OmegaC)/self.t0
+		return_me = self.Integrand_H0overc.integral(OmegaM,OmegaX,OmegaC)/self.t0
 		return return_me
 
 	@Integrate
