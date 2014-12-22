@@ -2,6 +2,18 @@
 #in the code
 import numpy as np
 
+#Physical constants
+c = 299792458. #ms^-1
+Mpc = 1.
+Gpc = 1e3*Mpc
+# age = 15. billion years
+#     = 15. *10**9*(365.25*24.*60.*60.) s
+#     = 15. *10**9*(365.25*24.*60.*60.)* 299792458. m
+#     = 15. *10**9*(365.25*24.*60.*60.)* 299792458. *3.24077929*10**(-23) Mpc
+#     = 15. * 306.60139383811764 Mpc
+ageMpc = 306.60139383811764
+
+
 class Findroot(object):
 	"""
 	Quite possibly an unnecessary class decorator for the scipy brentq root 
