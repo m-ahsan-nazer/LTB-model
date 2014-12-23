@@ -37,22 +37,13 @@ print "OmegaX"
 print test_GP.OmegaX(test_r_vals)
 print "d_OmegaX_dr"
 print test_GP.d_OmegaX_dr(test_r_vals)
-print "testing intermediate"
-@Integrate
-def set_H0overc(RoverR0,OmegaM,OmegaX,OmegaC):
-	"""
-	Eq. (2.29) in http://arxiv.org/abs/1103.4143
-	[H0overc]=Mpc^-1
-	"""
-	return np.sqrt(RoverR0) / np.sqrt(OmegaM + OmegaX*RoverR0**3 + OmegaC*RoverR0)
 
-print set_H0overc.integral(0.2,0.8,0.)
 print "H0overc"
-#print test_GP.H0overc(test_GP.OmegaM(test_r_vals[0]),
-#                      test_GP.OmegaX(test_r_vals[0]),
-#                      1.-test_GP.OmegaM(test_r_vals[0])-test_GP.OmegaX(test_r_vals[0])
-#                      )
-print test_GP.H0overc(0.2,0.8,0.)
+#print test_GP.H0overc(0.2,0.8,0.)
+print test_GP.H0overc(0.)
+print "d_H0overc_dr"
+print test_GP.d_H0overc_dr(3.37*Gpc)
+
 #c = 299792458. #ms^-1
 #Mpc = 1.
 #Gpc = 1e3*Mpc

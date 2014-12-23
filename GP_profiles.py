@@ -28,14 +28,13 @@ class GP_MODEL():
 	             r0, delta_r,age)
 		
 		from functools import wraps
-		#self.set_H0overc()
 		self.Integrand_H0overc = Integrate(self.Integrand_H0overc)
 		self.Integrand_H0overc.set_options(epsabs=1.49e-16,epsrel=1.49e-12)
 		self.Integrand_H0overc.set_limits(0.,1.)
-		#print "limit of set_H0overc", self.set_H0overc._b
-		#self.set_d_H0overc_dr()
-		self.set_d_H0overc_dr.set_options(epsabs=1.49e-16,epsrel=1.49e-12)
-		self.set_d_H0overc_dr.set_limits(0.,1.)
+		
+		self.Integrand_d_H0overc_dr = Integrate(self.Integrand_d_H0overc_dr)
+		self.Integrand_d_H0overc_dr.set_options(epsabs=1.49e-16,epsrel=1.49e-12)
+		self.Integrand_d_H0overc_dr.set_limits(0.,1.)
 	
 	def set_params(self,H_in, H_out, H_not, Lambda,
 	               OmegaM_in, OmegaM_out, 
@@ -103,39 +102,48 @@ class GP_MODEL():
 		np.tanh((1./2.)*self.r0/self.delta_r)))
 		return return_me
 	
-	def Integrand_H0overc(self,RoverR0,OmegaM,OmegaX,OmegaC):
+	#def Integrand_H0overc(self,RoverR0,OmegaM,OmegaX,OmegaC):
+	def Integrand_H0overc(self,RoverR0,r):
 		"""
 		Eq. (2.29) in http://arxiv.org/abs/1103.4143
 		[H0overc]=Mpc^-1
 		"""
+		OmegaM = self.OmegaM(r)
+		OmegaX = self.OmegaX(r)
+		OmegaC = 1. - OmegaM - OmegaX
 		return np.sqrt(RoverR0) / np.sqrt(OmegaM + OmegaX*RoverR0**3 + OmegaC*RoverR0)
 
-	def H0overc(self,OmegaM,OmegaX,OmegaC):
+	#def H0overc(self,OmegaM,OmegaX,OmegaC):
+	def H0overc(self,r):
 		"""
 		Eq. (2.29) in http://arxiv.org/abs/1103.4143
 		[H0overc]=Mpc^-1
 		"""
-		return_me = self.Integrand_H0overc.integral(OmegaM,OmegaX,OmegaC)/self.t0
+		return_me = self.Integrand_H0overc.integral(r)/self.t0
 		return return_me
 
-	@Integrate
-	def set_d_H0overc_dr(self,RoverR0,OmegaM,OmegaX,OmegaC):
+	#def Integrand_d_H0overc_dr(self,RoverR0,OmegaM,OmegaX,OmegaC):
+	def Integrand_d_H0overc_dr(self,RoverR0,r):
 		"""
 		Eq. (2.29) in http://arxiv.org/abs/1103.4143
 		[H0overc]=Mpc^-1
 		"""
+		OmegaM = self.OmegaM(r)
+		OmegaX = self.OmegaX(r)
+		OmegaC = 1. - OmegaM - OmegaX
 		return_me =  -0.5 / (OmegaM/RoverR0 + OmegaX/RoverR0**2 + OmegaC)**(1.5) * \
-		             (self.d_OmegaM_dr/RoverR0 + self.d_OmegaX_dr/RoverR0**2 + 
-		              (-self.d_OmegaM_dr - self.d_OmegaX_dr)
+		             (self.d_OmegaM_dr(r)/RoverR0 + self.d_OmegaX_dr(r)/RoverR0**2 + 
+		             (-self.d_OmegaM_dr(r) - self.d_OmegaX_dr(r))
 		             )
 		return return_me
 
+	#def d_H0overc_dr(self,OmegaM,OmegaX,OmegaC):
 	def d_H0overc_dr(self,r):
 		"""
 		Evaluates partial derivative of H0overc(r) w.r.t r
 		[d_H0overc_dr]=Mpc^-2
 		"""
-		return_me = set_d_H0overc_dr.integral(OmegaM,OmegaX,OmegaC)/self.t0
+		return_me = self.Integrand_d_H0overc_dr.integral(r)/self.t0
 		return return_me
 
 
