@@ -23,8 +23,7 @@ import multiprocessing as mp
 
 OmegaX_in = 0.699
 OmegaM_in = 1. - OmegaX_in
-test_GP = GP_MODEL(H_in=0.6,H_out=0.7,H_not=0.7,Lambda=0.,
-	               OmegaM_in=OmegaM_in,OmegaM_out=1., 
+test_GP = GP_MODEL(OmegaM_in=OmegaM_in,OmegaM_out=1., 
 	               OmegaX_in = OmegaX_in,OmegaX_out=0.,
 	               r0=3.37*Gpc,delta_r=0.35,age=13.7*ageMpc)
 print test_GP.__doc__
@@ -44,63 +43,27 @@ print test_GP.H0overc(0.)
 print "d_H0overc_dr"
 print test_GP.d_H0overc_dr(3.37*Gpc)
 
-#c = 299792458. #ms^-1
-#Mpc = 1.
-#Gpc = 1e3*Mpc
-#H_in = 0.73 #0.5-0.85 units km s^-1 Mpc^-1
-#Hoverc_in = H_in*1e5/c #units of Mpc^-1
-#H_out = 0.6 #0.7 #0.3-0.7 units km s^-1 Mpc^-1
-#Hoverc_out = H_out*1e5/c #units of Mpc^-1
-#H_not = 0.6 #0.7 #0.5-0.95 units km s^-1 Mpc^-1
-#Hoverc_not = H_not*1e5/c #units of Mpc^-1
-#Omega_in = 0.33 #0.05-0.35
-##if Lambda is nonzero check equations for correct units. [Lambda]=[R]^-2
-
-#Omega_Lambda = 0.7 #0.9
-#Lambda = Omega_Lambda * 3. * Hoverc_not**2
-#Omega_out = .98 - Omega_Lambda
-#r0 = 60./H_out #3.*Gpc  #2.5*Gpc #3.5 #0.33 #0.3-4.5 units Gpc
-#delta_r = 15. #2.5 #0.2*r0 #5. #0.2*r0 # 0.1r0-0.9r0
-## r shall be in units of Mpc
-## As a point of reference in class the conformal age of 13894.100411 Mpc 
-## corresponds to age = 13.461693 Gyr
-## age = 15. billion years
-##     = 15. *10**9*(365.25*24.*60.*60.) s
-##     = 15. *10**9*(365.25*24.*60.*60.)* 299792458. m
-##     = 15. *10**9*(365.25*24.*60.*60.)* 299792458. *3.24077929*10**(-23) Mpc
-##     = 15. * 306.60139383811764 Mpc
-#ageMpc = 306.60139383811764
-####################
-##wiltshire notation
-## r0 = R = 20 to 60  (h^{-1] Mpc)
-#delta_w = -0.95 #-0.95 to -1
-##delta_r =  w = 2.5  , 5.,  10.,  15.
-## add subscript w to all quantities wiltshire
-####################
-#print "Omega_Lambda", Omega_Lambda, "Lambda ", Lambda
-#print "Omega_out ", Omega_out, "H0 ", H_out
-
-##from GBH import GBH_MODEL
-##gbh =  GBH_MODEL(H_in=H_in,H_out=H_out,H_not=H_not,Lambda=Lambda,Omega_in=Omega_in,
-##	                  r0=r0,delta_r=delta_r)  
-
-##Omega_M      = gbh.Omega_M
-##d_Omega_M_dr = gbh.d_Omega_M_dr
-##H0overc      = gbh.H0overc
-##d_H0overc_dr = gbh.d_H0overc_dr 
-##LTB_M        = gbh.LTB_M
-##dLTB_M_dr    = gbh.dLTB_M_dr 
-##LTB_E        = gbh.LTB_E
-##dLTB_E_dr    = gbh.dLTB_E_dr
-
-#def dLTBw_M_dr(r):
-	#"""
-	#[LTB_M] = Mpc
-	#"""
-	#return_me = 0.75*Omega_out*Hoverc_out**2*r**2 * (2.+delta_w - delta_w* 
-	                                                 #np.tanh((r-r0)/delta_r))
-	#return return_me
-
+r_vals = np.linspace(0.,5*Gpc,1000)
+plt.figure()
+plt.plot(r_vals,test_GP.OmegaM(r_vals),'r:')
+plt.plot(r_vals,test_GP.OmegaX(r_vals))
+#plt.yscale('log')
+#plt.yscale('log')
+plt.figure()
+plt.plot(r_vals,test_GP.d_OmegaM_dr(r_vals),'r:')
+plt.plot(r_vals,test_GP.d_OmegaX_dr(r_vals))
+plt.figure()
+H0overc = np.asarray([test_GP.H0overc(r_val) for r_val in r_vals])
+plt.plot(r_vals,H0overc,'r:')
+d_H0overc_dr = np.asarray([test_GP.d_H0overc_dr(r_val) for r_val in r_vals])
+plt.plot(r_vals,d_H0overc_dr)
+plt.figure()
+plt.plot(r_vals,test_GP.M(r_vals),'r:')
+plt.plot(r_vals,test_GP.d_M_dr(r_vals))
+plt.figure()
+plt.plot(r_vals,test_GP.E(r_vals),'r:')
+#plt.plot(r_vals,test_GP.d_E_dr(r_vals))
+plt.show()
 ##fist make a spline and use it to calcuate the integral than make a second spline
 ## so that it is computationally less expensive
 

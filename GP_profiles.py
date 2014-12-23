@@ -17,43 +17,36 @@ class GP_MODEL():
 	A class for the LTB models used in J. Grande and L. Perivolaropoulos 
 	Phys. Rev. D. 84:023514, 2011. 
 	"""
-	def __init__(self,H_in=0.6,H_out=0.7,H_not=0.7,Lambda=0.,
+	def __init__(self,
 	             OmegaM_in=0.301,OmegaM_out=1., 
 	             OmegaX_in = 0.699,OmegaX_out=0.,
 	             r0=3.37*Gpc,delta_r=0.35,age=13.7*ageMpc):
 		
-		self.set_params(H_in, H_out, H_not, Lambda,
-	             OmegaM_in, OmegaM_out, 
-	             OmegaX_in, OmegaX_out,
-	             r0, delta_r,age)
+		self.set_params( OmegaM_in, OmegaM_out, 
+	                     OmegaX_in, OmegaX_out,
+	                     r0, delta_r,age)
 		
 		from functools import wraps
 		self.Integrand_H0overc = Integrate(self.Integrand_H0overc)
 		self.Integrand_H0overc.set_options(epsabs=1.49e-16,epsrel=1.49e-12)
 		self.Integrand_H0overc.set_limits(0.,1.)
+		self.H0overc = np.vectorize(self.H0overc)
 		
 		self.Integrand_d_H0overc_dr = Integrate(self.Integrand_d_H0overc_dr)
 		self.Integrand_d_H0overc_dr.set_options(epsabs=1.49e-16,epsrel=1.49e-12)
 		self.Integrand_d_H0overc_dr.set_limits(0.,1.)
+		self.d_H0overc_dr = np.vectorize(self.d_H0overc_dr)
 	
-	def set_params(self,H_in, H_out, H_not, Lambda,
+	def set_params(self,
 	               OmegaM_in, OmegaM_out, 
 	               OmegaX_in, OmegaX_out,
 	               r0, delta_r,age):
 		"""
 		Set the required parameters for the GP models
 		"""
-		self.H_in = H_in #0.5-0.85 units km s^-1 Mpc^-1
-		self.Hoverc_in = H_in*1e5/c #units of Mpc^-1
-		self.H_out = H_out  #0.3-0.7 units km s^-1 Mpc^-1
-		self.Hoverc_out = H_out*1e5/c #units of Mpc^-1
-		self.H_not = H_not #0.5-0.95 units km s^-1 Mpc^-1
-		self.Hoverc_not = H_not*1e5/c #units of Mpc^-1
-		self.OmegaM_in = OmegaM_in #0.05-0.35
-		#if Lambda is nonzero check equations for correct units. [Lambda]=[R]^-2
-		self.Lambda = Lambda  #0.7
-		self.OmegaM_out = 0.99999 - self.Lambda
-		self.OmegaX_in = OmegaX_in
+		self.OmegaM_in  = OmegaM_in
+		self.OmegaM_out = OmegaM_out 
+		self.OmegaX_in  = OmegaX_in
 		self.OmegaX_out = OmegaX_out
 		#self.OmegaC = 1. - Omega
 		
@@ -147,14 +140,14 @@ class GP_MODEL():
 		return return_me
 
 
-	def LTB_M(self,r):
+	def M(self,r):
 		"""
 		[LTB_M] = Mpc
 		"""
 		return_me = self.H0overc(r)**2*self.OmegaM(r)*r**3 / 2.
 		return return_me
 
-	def dLTB_M_dr(self,r):
+	def d_M_dr(self,r):
 		"""
 		[dLTB_M_dr] is dimensionless
 		"""
@@ -163,7 +156,7 @@ class GP_MODEL():
 	            3./2.*self.H0overc(r)**2*self.OmegaM(r)*r**2
 		return return_me
 
-	def LTB_E(self,r):
+	def E(self,r):
 		"""
 		E(r) in Eq. (2.1) of "Structures in the Universe by Exact Methods"
 		2E(r) \equiv -k(r) in http://arxiv.org/abs/0802.1523
@@ -177,16 +170,16 @@ class GP_MODEL():
 		return_me = -0.5*self.H0overc(r)**2*(self.OmegaM(r)+self.OmegaX(r)-1.)*r**2
 		return return_me
 
-	def dLTB_E_dr(self,r):
+	def d_E_dr(self,r):
 		"""
 		[dLTB_E_dr]=Mpc^-1
 		Note:
 		     See LTB_E(r) for the two choices given below
 		"""
 		#return_me = 2.*LTB_E(r)/r + r**2 * (H0overc(r)*d_H0overc_dr(r) - dLTB_M_dr(r)/r**3 + 3.*LTB_M(r)/r**4)
-		return_me = -self.d_H0overc_dr(r)*self.H0overc(r)*(self.Omega_M(r)+self.OmegaX(r)-1.)*r**2 \
+		return_me = -self.d_H0overc_dr(r)*self.H0overc(r)*(self.OmegaM(r)+self.OmegaX(r)-1.)*r**2 \
 	            -0.5*self.H0overc(r)**2*(self.d_OmegaM_dr(r)+self.d_OmegaX_dr(r))*r**2 \
-	            -self.H0overc(r)**2*(self.Omega_M(r)+self.OmegaX(r)-1.)*r
+	            -self.H0overc(r)**2*(self.OmegaM(r)+self.OmegaX(r)-1.)*r
 		return return_me
 
 
