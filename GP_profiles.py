@@ -20,7 +20,7 @@ class GP_MODEL():
 	def __init__(self,
 	             OmegaM_in=0.301,OmegaM_out=1., 
 	             OmegaX_in = 0.699,OmegaX_out=0.,
-	             r0=3.37*Gpc,delta_r=0.35,age=13.7*ageMpc):
+	             r0=3.37*Gpc,delta_r=0.35*Gpc,age=13.7*ageMpc):
 		
 		self.set_params( OmegaM_in, OmegaM_out, 
 	                     OmegaX_in, OmegaX_out,
@@ -124,9 +124,9 @@ class GP_MODEL():
 		OmegaM = self.OmegaM(r)
 		OmegaX = self.OmegaX(r)
 		OmegaC = 1. - OmegaM - OmegaX
-		return_me =  -0.5 / (OmegaM/RoverR0 + OmegaX/RoverR0**2 + OmegaC)**(1.5) * \
-		             (self.d_OmegaM_dr(r)/RoverR0 + self.d_OmegaX_dr(r)/RoverR0**2 + 
-		             (-self.d_OmegaM_dr(r) - self.d_OmegaX_dr(r))
+		return_me =  -0.5 *np.sqrt(RoverR0) / (OmegaM + OmegaX*RoverR0**3 + OmegaC*RoverR0)**(1.5) * \
+		             (self.d_OmegaM_dr(r) + self.d_OmegaX_dr(r)*RoverR0**3 + 
+		             (-self.d_OmegaM_dr(r) - self.d_OmegaX_dr(r))*RoverR0
 		             )
 		return return_me
 

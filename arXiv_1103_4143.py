@@ -25,7 +25,7 @@ OmegaX_in = 0.699
 OmegaM_in = 1. - OmegaX_in
 test_GP = GP_MODEL(OmegaM_in=OmegaM_in,OmegaM_out=1., 
 	               OmegaX_in = OmegaX_in,OmegaX_out=0.,
-	               r0=3.37*Gpc,delta_r=0.35,age=13.7*ageMpc)
+	               r0=3.37*Gpc,delta_r=0.35*Gpc,age=13.7*ageMpc)
 print test_GP.__doc__
 
 test_r_vals = np.array([0.,0.3,0.9,1.1,10.,2.e3,3.36e3,3.37e3,3.38e3,1e4])
@@ -43,120 +43,54 @@ print test_GP.H0overc(0.)
 print "d_H0overc_dr"
 print test_GP.d_H0overc_dr(3.37*Gpc)
 
-r_vals = np.linspace(0.,5*Gpc,1000)
-plt.figure()
-plt.plot(r_vals,test_GP.OmegaM(r_vals),'r:')
-plt.plot(r_vals,test_GP.OmegaX(r_vals))
-#plt.yscale('log')
-#plt.yscale('log')
-plt.figure()
-plt.plot(r_vals,test_GP.d_OmegaM_dr(r_vals),'r:')
-plt.plot(r_vals,test_GP.d_OmegaX_dr(r_vals))
-plt.figure()
-H0overc = np.asarray([test_GP.H0overc(r_val) for r_val in r_vals])
-plt.plot(r_vals,H0overc,'r:')
-d_H0overc_dr = np.asarray([test_GP.d_H0overc_dr(r_val) for r_val in r_vals])
-plt.plot(r_vals,d_H0overc_dr)
-plt.figure()
-plt.plot(r_vals,test_GP.M(r_vals),'r:')
-plt.plot(r_vals,test_GP.d_M_dr(r_vals))
-plt.figure()
-plt.plot(r_vals,test_GP.E(r_vals),'r:')
-#plt.plot(r_vals,test_GP.d_E_dr(r_vals))
-plt.show()
-##fist make a spline and use it to calcuate the integral than make a second spline
-## so that it is computationally less expensive
-
-##generously sample M(r) as it is not expensive
-##rw = np.concatenate((np.logspace(np.log10(1e-10),np.log10(1.),num=500,endpoint=False),
-##                       np.linspace(1.,r0+4.*delta_r,num=500,endpoint=False)))
-
-##rw = np.concatenate((rw,np.linspace(r0+4.*delta_r,20.*Gpc,num=300,endpoint=True)))
-
-#rw = sample_radial_coord(r0=r0,delta_r=delta_r,r_init=1e-10,r_max=20*1e3,num_pt1=1000,num_pt2=1000)
-
+#Now make splines for M(r), dM_dr(r), H(r), dH_dr(r). Splines will be much faster 
+#than the direct computation done in GP_profiles. Note that since E(r), dE_dr(r) 
+#are zero only M(r), dM_dr(r), H(r), dH_dr(r) and Lambda are needed for solving
+#the background and geodesic equations.
+# r_vec is used to make splines
+# r_vector is used for making the t-r grid on which the background LTB equations 
+# are solved.
+# r_vec has many more points than r_vector 
+r_vec = sample_radial_coord(r0=test_GP.r0,delta_r=test_GP.delta_r,r_init=1e-10,
+                            r_max=20*1e3,num_pt1=1000,num_pt2=1000)
 #r_vector = sample_radial_coord(r0=r0,delta_r=delta_r,r_init=1e-4,r_max=20*1e3,num_pt1=100,num_pt2=100)
-#size_r_vector = 200
+size_r_vec = r_vec.size
+r_vector = sample_radial_coord(r0=test_GP.r0,delta_r=test_GP.delta_r,r_init=1e-4,
+                              r_max=20*1e3,num_pt1=100,num_pt2=100)
+size_r_vector = r_vector.size
 
-#spdLTBw_M_dr = spline_1d(rw, dLTBw_M_dr(rw), s=0) #dLTBw_M_dr(rw), s=0)
-#spdLTBw_M_dr_int = spdLTBw_M_dr.antiderivative()
-#Mw = spdLTBw_M_dr_int(rw) #- spdLTBw_M_dr_int(rw[0])
-#model_age = 4282.74963782
-#spMw = spline_1d(rw,Mw,s=0)
+M_GP    = test_GP.M(r_vec)
+dMdr_GP = test_GP.d_M_dr(r_vec)
+H_GP    = test_GP.H0overc(r_vec)
+dHdr_GP = test_GP.d_H0overc_dr(r_vec)
+sp_M = spline_1d(r_vec, M_GP, s=0)
+sp_dMdr = spline_1d(r_vec, dMdr_GP, s=0)
+sp_H = spline_1d(r_vec, H_GP, s=0)
+sp_dHdr = spline_1d(r_vec, dHdr_GP, s=0)
+def sp_E(r):
+	return 0.
+def sp_dEdr(r):
+	return 0.
 
-#def LTBw_M(r):
-	#"""
-	#[LTB_M] = Mpc
-	#"""
-	#return spMw(r)
+plt.figure()
+plt.plot(r_vec,sp_M(r_vec))
+plt.figure()
+plt.plot(r_vec,sp_dMdr(r_vec))
+plt.figure()
+plt.plot(r_vec,sp_H(r_vec))
+plt.figure()
+plt.plot(r_vec,sp_dHdr(r_vec))
+plt.show()
 
+Lambda = test_GP.OmegaX(0.)*3.*test_GP.H0overc(0.)**2
+model_age = test_GP.t0
+print "Lambda is ", Lambda, test_GP.OmegaX(0.), test_GP.OmegaX(300.)*3.*test_GP.H0overc(300.)**2, test_GP.OmegaX(3*Gpc)*3.*test_GP.H0overc(3*Gpc)**2
+model =  LTB_ScaleFactor(Lambda=Lambda,LTB_E=sp_E, LTB_Edash=sp_dEdr,\
+                              LTB_M=sp_M, LTB_Mdash=sp_dMdr)
 
-
-
-#@Integrate
-#def LTB_t(RoverR0,twoE,twoM,Lambda_over3):
-	##return 1./np.sqrt(twoE + twoM/RoverR0 + Lambda_over3 * RoverR0**2)
-	#return np.sqrt(RoverR0)/np.sqrt(twoE*RoverR0 + twoM + Lambda_over3 * RoverR0**3)
-
-#LTB_t.set_options(epsabs=1.49e-16,epsrel=1.49e-12)
-#LTB_t.set_limits(0.,1.)
-#@Findroot
-#def LTB_2E_Eq(twoE_over_r3,twoM_over_r3,Lambda_over3):
-	#return model_age - LTB_t.integral(twoE_over_r3,twoM_over_r3,Lambda_over3) #*1.e-3
-
- 
-
-#LTB_2E_Eq.set_options(xtol=4.4408920985006262e-16,rtol=4.4408920985006262e-15)
-#LTB_2E_Eq.set_bounds(0.,1e-6) #(0,2.)
-
-#E = np.zeros(len(r_vector))
-##serial loop
-##i = 0
-##for r in r_vector:
-##	E[i] = LTB_2E_Eq.root(2.*LTB_M(r)/r**3,0.)
-##	i = i + 1
-
-#def E_loop(r,Lambda_over3):
-	#return LTB_2E_Eq.root(2.*LTBw_M(r)/r**3,Lambda_over3)
-
-
-#num_cores = mp.cpu_count()-1
-
-#E_vec = Parallel(n_jobs=num_cores,verbose=0)(delayed(E_loop)(r,Lambda/3.) for r in r_vector)
-#E_vec = np.asarray(E_vec)/2.
-
-#i = 0
-#for r in r_vector:
-	#print E_vec[i],  r
-	#i = i + 1
-
-
-#E_vec = E_vec
-
-#spLTBw_E = spline_1d(r_vector, E_vec, s=0) 
-#dE_vec_dr = spLTBw_E(r_vector,nu=1) #compute the first derivative
-#spdLTBw_E_dr = spline_1d(r_vector,dE_vec_dr,s=0)
-
-#def LTBw_E(r):
-	#"""
-	#returns the spline for r^2 * E(r) as E was E/r^2
-	#"""
-	#return r**2*spLTBw_E(r)
-
-#def dLTBw_E_dr(r):
-	#"""
-	#Returns the spline for diff(E(r),r)
-	#"""
-	#return 2*r*spLTBw_E(r) + r**2*spdLTBw_E_dr(r)
-
-
-
-#model =  LTB_ScaleFactor(Lambda=Lambda,LTB_E=LTBw_E, LTB_Edash=dLTBw_E_dr,\
-                              #LTB_M=LTBw_M, LTB_Mdash=dLTBw_M_dr)
-
-#num_pt = 1000 #6000
-#r_vec, t_vec, R_vec, Rdot_vec, Rdash_vec, Rdotdot_vec, Rdashdot_vec, = \
-              #[np.zeros((size_r_vector,num_pt)) for i in xrange(7)]
+t_num_pt = 1000 #6000
+r_vec, t_vec, R_vec, Rdot_vec, Rdash_vec, Rdotdot_vec, Rdashdot_vec, = \
+              [np.zeros((size_r_vector,t_num_pt)) for i in xrange(7)]
 
 ##serial 
 ##for i, r_loc in zip(range(len(r_vector)),r_vector):
@@ -165,32 +99,31 @@ plt.show()
 ##	Rdashdot_vec[i,:] = LTB_model0(r_loc=r_loc,num_pt=num_pt)
 ##	r_vec[i,:] = r_vec[i,:] + r_loc
 
-#def r_loop(r_loc):
-	#return model(r_loc=r_loc,t_max=model_age,num_pt=num_pt)
+def r_loop(r_loc):
+	return model(r_loc=r_loc,t_max=model_age,num_pt=t_num_pt)
 
 
-#num_cores = mp.cpu_count()-1	
-#r = Parallel(n_jobs=num_cores,verbose=0)(delayed(r_loop)(r_loc) for r_loc in r_vector)
-##r = Parallel(n_jobs=num_cores,verbose=0)(delayed(LTB_model0)(r_loc=r_loc,num_pt=num_pt) for r_loc in r_vector)
+num_cores = mp.cpu_count()-3	
+r = Parallel(n_jobs=num_cores,verbose=0)(delayed(r_loop)(r_loc) for r_loc in r_vector)
 
-#i = 0
-#for tup in r:
-	#t_vec[i,:], R_vec[i,:], Rdot_vec[i,:], Rdash_vec[i,:], Rdotdot_vec[i,:], \
-	#Rdashdot_vec[i,:] = tup
-	#i = i + 1
+i = 0
+for tup in r:
+	t_vec[i,:], R_vec[i,:], Rdot_vec[i,:], Rdash_vec[i,:], Rdotdot_vec[i,:], \
+	Rdashdot_vec[i,:] = tup
+	i = i + 1
 
-#t_vector = t_vec[0,:]
-#sp = spline_2d(r_vector,t_vector,R_vec,s=0)
-#spdr = spline_2d(r_vector,t_vector,Rdash_vec,s=0)
-#spR = spline_2d(r_vector,t_vector,R_vec,s=0)
-#spRdot = spline_2d(r_vector,t_vector,Rdot_vec,s=0)
-#spRdash = spline_2d(r_vector,t_vector,Rdash_vec,s=0)
-#spRdashdot = spline_2d(r_vector,t_vector,Rdashdot_vec,s=0)
+t_vector = t_vec[0,:]
+spR = spline_2d(r_vector,t_vector,R_vec,s=0)
+spRdot = spline_2d(r_vector,t_vector,Rdot_vec,s=0)
+spRdash = spline_2d(r_vector,t_vector,Rdash_vec,s=0)
+spRdashdot = spline_2d(r_vector,t_vector,Rdashdot_vec,s=0)
 
-#print "checking that age is the same "
-#for r_val in r_vector:
-	#print "model age = ", model_age/ageMpc, "sp(r,age) ", sp.ev(r_val,model_age), "r ", r_val
-	#print "H(r,t0) ", spRdot.ev(r_val,model_age)/spR.ev(r_val,model_age)
+print "A basic check on the Hubble expansion "
+for r_val in r_vector:
+	print "H(r,t0) ", r_val, sp_H(r_val), spRdot.ev(r_val,model_age)/spR.ev(r_val,model_age)
+	print "dHdr(r,t0) ", sp_dHdr(r_val), \
+	spRdashdot.ev(r_val,model_age)/spR.ev(r_val,model_age) - spRdot.ev(r_val,model_age)*spRdash.ev(r_val,model_age)/spR.ev(r_val,model_age)**2
+	print "****"
 
 ################################################################################
 ##******************************************************************************
