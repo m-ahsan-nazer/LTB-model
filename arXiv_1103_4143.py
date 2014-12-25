@@ -60,13 +60,16 @@ r_vector = sample_radial_coord(r0=test_GP.r0,delta_r=test_GP.delta_r,r_init=1e-4
 size_r_vector = r_vector.size
 
 M_GP    = test_GP.M(r_vec)
-dMdr_GP = test_GP.d_M_dr(r_vec)
+#dMdr_GP = test_GP.d_M_dr(r_vec)
 H_GP    = test_GP.H0overc(r_vec)
-dHdr_GP = test_GP.d_H0overc_dr(r_vec)
+#dHdr_GP = test_GP.d_H0overc_dr(r_vec)
 sp_M = spline_1d(r_vec, M_GP, s=0)
-sp_dMdr = spline_1d(r_vec, dMdr_GP, s=0)
+sp_dMdr = sp_M.derivative(1)
+sp_dMdr = spline_1d(r_vec,sp_dMdr(r_vec))
 sp_H = spline_1d(r_vec, H_GP, s=0)
-sp_dHdr = spline_1d(r_vec, dHdr_GP, s=0)
+sp_dHdr = sp_H.derivative(1) 
+sp_dHdr = spline_1d(r_vec,sp_dHdr(r_vec))
+
 def sp_E(r):
 	return 0.
 def sp_dEdr(r):

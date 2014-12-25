@@ -143,6 +143,7 @@ class GP_MODEL():
 	def M(self,r):
 		"""
 		[LTB_M] = Mpc
+		F(r) = H0(r)^2 OmegaM(r) A0(r)^3 = 2M
 		"""
 		return_me = self.H0overc(r)**2*self.OmegaM(r)*r**3 / 2.
 		return return_me
