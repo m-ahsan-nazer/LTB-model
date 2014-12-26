@@ -43,7 +43,8 @@ print test_GP.H0overc(0.)
 print "d_H0overc_dr"
 print test_GP.d_H0overc_dr(3.37*Gpc)
 
-#Now make splines for M(r), dM_dr(r), H(r), dH_dr(r). Splines will be much faster 
+#Now make splines for M(r), dM_dr(r), H(r), dH_dr(r), p(r), dp_dr(r). 
+#Splines will be much faster 
 #than the direct computation done in GP_profiles. Note that since E(r), dE_dr(r) 
 #are zero only M(r), dM_dr(r), H(r), dH_dr(r) and Lambda are needed for solving
 #the background and geodesic equations.
@@ -60,15 +61,18 @@ r_vector = sample_radial_coord(r0=test_GP.r0,delta_r=test_GP.delta_r,r_init=1e-4
 size_r_vector = r_vector.size
 
 M_GP    = test_GP.M(r_vec)
-#dMdr_GP = test_GP.d_M_dr(r_vec)
 H_GP    = test_GP.H0overc(r_vec)
-#dHdr_GP = test_GP.d_H0overc_dr(r_vec)
-sp_M = spline_1d(r_vec, M_GP, s=0)
+p_GP    = test_GP.p(r_vec)
+sp_M    = spline_1d(r_vec, M_GP, s=0)
 sp_dMdr = sp_M.derivative(1)
 sp_dMdr = spline_1d(r_vec,sp_dMdr(r_vec))
-sp_H = spline_1d(r_vec, H_GP, s=0)
+sp_H    = spline_1d(r_vec, H_GP, s=0)
 sp_dHdr = sp_H.derivative(1) 
 sp_dHdr = spline_1d(r_vec,sp_dHdr(r_vec))
+sp_p    = spline_1d(r_vec,p_GP, s=0)
+sp_dpdr = sp_p.derivative(1)
+sp_dpdr = spline_1d(r_vec,sp_dpdr(r_vec))
+
 
 def sp_E(r):
 	return 0.
@@ -88,8 +92,30 @@ plt.show()
 Lambda = test_GP.OmegaX(0.)*3.*test_GP.H0overc(0.)**2
 model_age = test_GP.t0
 print "Lambda is ", Lambda, test_GP.OmegaX(0.), test_GP.OmegaX(300.)*3.*test_GP.H0overc(300.)**2, test_GP.OmegaX(3*Gpc)*3.*test_GP.H0overc(3*Gpc)**2
-model =  LTB_ScaleFactor(Lambda=Lambda,LTB_E=sp_E, LTB_Edash=sp_dEdr,\
-                              LTB_M=sp_M, LTB_Mdash=sp_dMdr)
+
+def model_background(t,r):
+	sinh_t = np.sinh(np.sqrt(6.*sp_p(r)) * t)
+	cosh_t = np.cosh(np.sqrt(6.*sp_p(r)) * t) 
+	# R(t,r)
+	R = 3./4.*sp_M(r)* sinh_t**2 / sp_p(r)
+	R = R**(1./3.)
+	# diff( R(t,r), t)
+	Rdot = 6**(5./6.)/3. * ( sp_M(r)/sp_p(r) )**(1./3.) * np.sqrt( sp_p(r) ) \
+	       *cosh_t / sinh_t**(1./3.)
+	
+	# diff( R(t,r), r)
+	Rdash = -sp_dpdr(r)* sp_M(r)**(1./3.) * ( 
+	        6**(-2./3.)* sinh_t**(2./3.) /sp_p(r)**(4./3.) - \
+	        6**(-1./6.)* cosh_t * t / sinh_t**(1./3.) / sp_p(r)**(5./6.) 
+	        ) + \ 
+	        6**(-2./3.)*sinh_t**(2./3.)* sp_dMdr(r)/ (sp_M(r)**2 * sp_p(r))**(1./3.) 
+	
+	# diff( R(t,r), t,r)
+	Rdashdot = 1./3./Rdot/R**2 *( ( 3.*R*Rdot**2 - 9.*sp_M(r) )*Rdash + \
+	                              4.*R**4*sp_dpdr(r) + \
+	                              3.*sp_dMdr(r)*R
+	                            )
+	return R, Rdot, Rdash, Rdashdot
 
 t_num_pt = 1000 #6000
 r_vec, t_vec, R_vec, Rdot_vec, Rdash_vec, Rdotdot_vec, Rdashdot_vec, = \
@@ -131,7 +157,7 @@ for r_val in r_vector:
 ################################################################################
 ##******************************************************************************
 #model_geodesics =  LTB_geodesics(R_spline=spR,Rdot_spline=spRdot,
-#Rdash_spline=spRdash,Rdashdot_spline=spRdashdot,LTB_E=LTBw_E, LTB_Edash=dLTBw_E_dr)
+#Rdash_spline=spRddifash,Rdashdot_spline=spRdashdot,LTB_E=LTBw_E, LTB_Edash=dLTBw_E_dr)
 
 #num_angles = 100 #20. #200 #200
 #angles = np.linspace(0.,0.995*np.pi,num=100,endpoint=True)

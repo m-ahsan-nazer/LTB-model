@@ -31,11 +31,6 @@ class GP_MODEL():
 		self.Integrand_H0overc.set_options(epsabs=1.49e-16,epsrel=1.49e-12)
 		self.Integrand_H0overc.set_limits(0.,1.)
 		self.H0overc = np.vectorize(self.H0overc)
-		
-		self.Integrand_d_H0overc_dr = Integrate(self.Integrand_d_H0overc_dr)
-		self.Integrand_d_H0overc_dr.set_options(epsabs=1.49e-16,epsrel=1.49e-12)
-		self.Integrand_d_H0overc_dr.set_limits(0.,1.)
-		self.d_H0overc_dr = np.vectorize(self.d_H0overc_dr)
 	
 	def set_params(self,
 	               OmegaM_in, OmegaM_out, 
@@ -115,31 +110,6 @@ class GP_MODEL():
 		return_me = self.Integrand_H0overc.integral(r)/self.t0
 		return return_me
 
-	#def Integrand_d_H0overc_dr(self,RoverR0,OmegaM,OmegaX,OmegaC):
-	def Integrand_d_H0overc_dr(self,RoverR0,r):
-		"""
-		Eq. (2.29) in http://arxiv.org/abs/1103.4143
-		[H0overc]=Mpc^-1
-		"""
-		OmegaM = self.OmegaM(r)
-		OmegaX = self.OmegaX(r)
-		OmegaC = 1. - OmegaM - OmegaX
-		return_me =  -0.5 *np.sqrt(RoverR0) / (OmegaM + OmegaX*RoverR0**3 + OmegaC*RoverR0)**(1.5) * \
-		             (self.d_OmegaM_dr(r) + self.d_OmegaX_dr(r)*RoverR0**3 + 
-		             (-self.d_OmegaM_dr(r) - self.d_OmegaX_dr(r))*RoverR0
-		             )
-		return return_me
-
-	#def d_H0overc_dr(self,OmegaM,OmegaX,OmegaC):
-	def d_H0overc_dr(self,r):
-		"""
-		Evaluates partial derivative of H0overc(r) w.r.t r
-		[d_H0overc_dr]=Mpc^-2
-		"""
-		return_me = self.Integrand_d_H0overc_dr.integral(r)/self.t0
-		return return_me
-
-
 	def M(self,r):
 		"""
 		[LTB_M] = Mpc
@@ -148,39 +118,19 @@ class GP_MODEL():
 		return_me = self.H0overc(r)**2*self.OmegaM(r)*r**3 / 2.
 		return return_me
 
-	def d_M_dr(self,r):
-		"""
-		[dLTB_M_dr] is dimensionless
-		"""
-		return_me = self.H0overc(r)*self.d_H0overc_dr(r)*self.OmegaM(r)*r**3 + \
-	            self.H0overc(r)**2*self.d_OmegaM_dr(r)*r**3 /2. + \
-	            3./2.*self.H0overc(r)**2*self.OmegaM(r)*r**2
-		return return_me
 
 	def E(self,r):
-		"""
-		E(r) in Eq. (2.1) of "Structures in the Universe by Exact Methods"
-		2E(r) \equiv -k(r) in http://arxiv.org/abs/0802.1523
-		[LTB_E] is dimensionless
-		"""
-		# Since a gauge condition is used i.e. R(t0,r) =r the expression 
-		#below is always true 
-		#return_me = r**2.*( H0overc(r)**2 - 2.*LTB_M(r)/r**3 - Lambda/3. )/2.
-		#the above should produce the same result as the expression used for 
-		# k(r) in the paper given below. uncomment and use either one.
-		return_me = -0.5*self.H0overc(r)**2*(self.OmegaM(r)+self.OmegaX(r)-1.)*r**2
-		return return_me
+		return 0.
 
 	def d_E_dr(self,r):
+		return 0.
+	
+	def p(self,r):
 		"""
-		[dLTB_E_dr]=Mpc^-1
-		Note:
-		     See LTB_E(r) for the two choices given below
+		OmegaX = (-8piG / 3) p/H0^2
+		return: Redefined p \equiv -pi G p
 		"""
-		#return_me = 2.*LTB_E(r)/r + r**2 * (H0overc(r)*d_H0overc_dr(r) - dLTB_M_dr(r)/r**3 + 3.*LTB_M(r)/r**4)
-		return_me = -self.d_H0overc_dr(r)*self.H0overc(r)*(self.OmegaM(r)+self.OmegaX(r)-1.)*r**2 \
-	            -0.5*self.H0overc(r)**2*(self.d_OmegaM_dr(r)+self.d_OmegaX_dr(r))*r**2 \
-	            -self.H0overc(r)**2*(self.OmegaM(r)+self.OmegaX(r)-1.)*r
-		return return_me
+		return self.H0overc(r)**2*self.OmegaX(r)*3./8.
+	
 
 
