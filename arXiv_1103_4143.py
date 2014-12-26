@@ -40,8 +40,6 @@ print test_GP.d_OmegaX_dr(test_r_vals)
 print "H0overc"
 #print test_GP.H0overc(0.2,0.8,0.)
 print test_GP.H0overc(0.)
-print "d_H0overc_dr"
-print test_GP.d_H0overc_dr(3.37*Gpc)
 
 #Now make splines for M(r), dM_dr(r), H(r), dH_dr(r), p(r), dp_dr(r). 
 #Splines will be much faster 
@@ -53,11 +51,11 @@ print test_GP.d_H0overc_dr(3.37*Gpc)
 # are solved.
 # r_vec has many more points than r_vector 
 r_vec = sample_radial_coord(r0=test_GP.r0,delta_r=test_GP.delta_r,r_init=1e-10,
-                            r_max=20*1e3,num_pt1=1000,num_pt2=1000)
+                            r_max=15*1e3,num_pt1=1000,num_pt2=1000)
 #r_vector = sample_radial_coord(r0=r0,delta_r=delta_r,r_init=1e-4,r_max=20*1e3,num_pt1=100,num_pt2=100)
 size_r_vec = r_vec.size
 r_vector = sample_radial_coord(r0=test_GP.r0,delta_r=test_GP.delta_r,r_init=1e-4,
-                              r_max=20*1e3,num_pt1=100,num_pt2=100)
+                              r_max=15*1e3,num_pt1=100,num_pt2=100)
 size_r_vector = r_vector.size
 
 M_GP    = test_GP.M(r_vec)
@@ -87,7 +85,12 @@ plt.figure()
 plt.plot(r_vec,sp_H(r_vec))
 plt.figure()
 plt.plot(r_vec,sp_dHdr(r_vec))
+plt.figure()
+plt.plot(r_vec,sp_p(r_vec))
 plt.show()
+
+if (sp_p(r_vec).any() < 0.):
+	print "o yeah a negative number "
 
 Lambda = test_GP.OmegaX(0.)*3.*test_GP.H0overc(0.)**2
 model_age = test_GP.t0
@@ -95,6 +98,8 @@ print "Lambda is ", Lambda, test_GP.OmegaX(0.), test_GP.OmegaX(300.)*3.*test_GP.
 
 def model_background(t,r):
 	sinh_t = np.sinh(np.sqrt(6.*sp_p(r)) * t)
+	if ( sp_p(r) < 0.):
+		print "is nan", r, sp_p(r)
 	cosh_t = np.cosh(np.sqrt(6.*sp_p(r)) * t) 
 	# R(t,r)
 	R = 3./4.*sp_M(r)* sinh_t**2 / sp_p(r)
@@ -106,20 +111,21 @@ def model_background(t,r):
 	# diff( R(t,r), r)
 	Rdash = -sp_dpdr(r)* sp_M(r)**(1./3.) * ( 
 	        6**(-2./3.)* sinh_t**(2./3.) /sp_p(r)**(4./3.) - \
-	        6**(-1./6.)* cosh_t * t / sinh_t**(1./3.) / sp_p(r)**(5./6.) 
-	        ) + \ 
+	        6**(-1./6.)* cosh_t * t / sinh_t**(1./3.) / sp_p(r)**(5./6.) \
+	        ) + \
 	        6**(-2./3.)*sinh_t**(2./3.)* sp_dMdr(r)/ (sp_M(r)**2 * sp_p(r))**(1./3.) 
 	
 	# diff( R(t,r), t,r)
 	Rdashdot = 1./3./Rdot/R**2 *( ( 3.*R*Rdot**2 - 9.*sp_M(r) )*Rdash + \
 	                              4.*R**4*sp_dpdr(r) + \
-	                              3.*sp_dMdr(r)*R
+	                              3.*sp_dMdr(r)*R \
 	                            )
 	return R, Rdot, Rdash, Rdashdot
 
 t_num_pt = 1000 #6000
-r_vec, t_vec, R_vec, Rdot_vec, Rdash_vec, Rdotdot_vec, Rdashdot_vec, = \
-              [np.zeros((size_r_vector,t_num_pt)) for i in xrange(7)]
+t_vec = np.logspace(np.log10(1e-6),np.log10(model_age),num=t_num_pt,endpoint=True)
+R_vec, Rdot_vec, Rdash_vec, Rdashdot_vec, = \
+              [np.zeros((size_r_vector,t_num_pt)) for i in xrange(4)]
 
 ##serial 
 ##for i, r_loc in zip(range(len(r_vector)),r_vector):
@@ -129,19 +135,23 @@ r_vec, t_vec, R_vec, Rdot_vec, Rdash_vec, Rdotdot_vec, Rdashdot_vec, = \
 ##	r_vec[i,:] = r_vec[i,:] + r_loc
 
 def r_loop(r_loc):
-	return model(r_loc=r_loc,t_max=model_age,num_pt=t_num_pt)
+	return model_background(t_vec,r_loc)
 
 
-num_cores = mp.cpu_count()-3	
+num_cores = mp.cpu_count()-1	
 r = Parallel(n_jobs=num_cores,verbose=0)(delayed(r_loop)(r_loc) for r_loc in r_vector)
 
 i = 0
 for tup in r:
-	t_vec[i,:], R_vec[i,:], Rdot_vec[i,:], Rdash_vec[i,:], Rdotdot_vec[i,:], \
-	Rdashdot_vec[i,:] = tup
+	R_vec[i,:], Rdot_vec[i,:], Rdash_vec[i,:], Rdashdot_vec[i,:] = tup
 	i = i + 1
 
-t_vector = t_vec[0,:]
+print "R_vec is ", R_vec
+print "Rdot_vec is", Rdot_vec
+print "Rdash_vec is", Rdash_vec
+print "Rdashdot_vec is", Rdashdot_vec
+
+t_vector = t_vec
 spR = spline_2d(r_vector,t_vector,R_vec,s=0)
 spRdot = spline_2d(r_vector,t_vector,Rdot_vec,s=0)
 spRdash = spline_2d(r_vector,t_vector,Rdash_vec,s=0)
