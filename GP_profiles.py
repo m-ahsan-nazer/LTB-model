@@ -56,7 +56,7 @@ class GP_MODEL():
 		Omega_M(r) fixes M(r) via M(r) = H0(r)**2 Omega_M(r) r**3
 		"""
 		return_me = self.OmegaM_out+(self.OmegaM_in-self.OmegaM_out)*(1. - 
-		np.tanh((1/2.)*(r-self.r0)/self.delta_r))/(1.+np.tanh((1/2.)*self.r0/self.delta_r))
+		np.tanh(0.5*(r-self.r0)/self.delta_r))/(1.+np.tanh(0.5*self.r0/self.delta_r))
 		return return_me
 
 	def d_OmegaM_dr(self,r):
@@ -77,7 +77,7 @@ class GP_MODEL():
 		Eq. (2.28) in http://arxiv.org/abs/1103.4143
 		"""
 		return_me = self.OmegaX_out+(self.OmegaX_in-self.OmegaX_out)*(1. - 
-		np.tanh((1/2.)*(r-self.r0)/self.delta_r))/(1.+np.tanh((1/2.)*self.r0/self.delta_r))
+		np.tanh(0.5*(r-self.r0)/self.delta_r))/(1.+np.tanh(0.5*self.r0/self.delta_r))
 		return return_me
 
 	def d_OmegaX_dr(self,r):

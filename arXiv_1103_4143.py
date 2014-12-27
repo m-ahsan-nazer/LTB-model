@@ -9,7 +9,7 @@ import numpy as np
 from LTB_Sclass_v2 import LTB_ScaleFactor
 from LTB_Sclass_v2 import LTB_geodesics, sample_radial_coord
 from LTB_housekeeping import c, Mpc, Gpc, ageMpc
-from LTB_housekeeping import Integrate
+from LTB_housekeeping import Findroot, Integrate, get_angles
 from GP_profiles import GP_MODEL
 
 from scipy.interpolate import UnivariateSpline as spline_1d
@@ -20,6 +20,8 @@ from mpl_toolkits.mplot3d import Axes3D
 from joblib import Parallel, delayed
 from joblib.pool import has_shareable_memory
 import multiprocessing as mp
+
+import healpy as hp
 
 OmegaX_in = 0.699
 OmegaM_in = 1. - OmegaX_in
@@ -51,11 +53,11 @@ print test_GP.H0overc(0.)
 # are solved.
 # r_vec has many more points than r_vector 
 r_vec = sample_radial_coord(r0=test_GP.r0,delta_r=test_GP.delta_r,r_init=1e-10,
-                            r_max=15*1e3,num_pt1=1000,num_pt2=1000)
+                            r_max=15.*1e3,num_pt1=1000,num_pt2=1000)
 #r_vector = sample_radial_coord(r0=r0,delta_r=delta_r,r_init=1e-4,r_max=20*1e3,num_pt1=100,num_pt2=100)
 size_r_vec = r_vec.size
 r_vector = sample_radial_coord(r0=test_GP.r0,delta_r=test_GP.delta_r,r_init=1e-4,
-                              r_max=15*1e3,num_pt1=100,num_pt2=100)
+                              r_max=15.*1e3,num_pt1=100,num_pt2=100)
 size_r_vector = r_vector.size
 
 M_GP    = test_GP.M(r_vec)
@@ -71,23 +73,22 @@ sp_p    = spline_1d(r_vec,p_GP, s=0)
 sp_dpdr = sp_p.derivative(1)
 sp_dpdr = spline_1d(r_vec,sp_dpdr(r_vec))
 
-
 def sp_E(r):
 	return 0.
 def sp_dEdr(r):
 	return 0.
 
-plt.figure()
-plt.plot(r_vec,sp_M(r_vec))
-plt.figure()
-plt.plot(r_vec,sp_dMdr(r_vec))
-plt.figure()
-plt.plot(r_vec,sp_H(r_vec))
-plt.figure()
-plt.plot(r_vec,sp_dHdr(r_vec))
-plt.figure()
-plt.plot(r_vec,sp_p(r_vec))
-plt.show()
+#plt.figure()
+#plt.plot(r_vec,sp_M(r_vec))
+#plt.figure()
+#plt.plot(r_vec,sp_dMdr(r_vec))
+#plt.figure()
+#plt.plot(r_vec,sp_H(r_vec))
+#plt.figure()
+#plt.plot(r_vec,sp_dHdr(r_vec))
+#plt.figure()
+#plt.plot(r_vec,sp_p(r_vec))
+#plt.show()
 
 if (sp_p(r_vec).any() < 0.):
 	print "o yeah a negative number "
@@ -146,11 +147,6 @@ for tup in r:
 	R_vec[i,:], Rdot_vec[i,:], Rdash_vec[i,:], Rdashdot_vec[i,:] = tup
 	i = i + 1
 
-print "R_vec is ", R_vec
-print "Rdot_vec is", Rdot_vec
-print "Rdash_vec is", Rdash_vec
-print "Rdashdot_vec is", Rdashdot_vec
-
 t_vector = t_vec
 spR = spline_2d(r_vector,t_vector,R_vec,s=0)
 spRdot = spline_2d(r_vector,t_vector,Rdot_vec,s=0)
@@ -160,33 +156,30 @@ spRdashdot = spline_2d(r_vector,t_vector,Rdashdot_vec,s=0)
 print "A basic check on the Hubble expansion "
 for r_val in r_vector:
 	print "H(r,t0) ", r_val, sp_H(r_val), spRdot.ev(r_val,model_age)/spR.ev(r_val,model_age)
-	print "dHdr(r,t0) ", sp_dHdr(r_val), \
-	spRdashdot.ev(r_val,model_age)/spR.ev(r_val,model_age) - spRdot.ev(r_val,model_age)*spRdash.ev(r_val,model_age)/spR.ev(r_val,model_age)**2
-	print "****"
 
 ################################################################################
 ##******************************************************************************
-#model_geodesics =  LTB_geodesics(R_spline=spR,Rdot_spline=spRdot,
-#Rdash_spline=spRddifash,Rdashdot_spline=spRdashdot,LTB_E=LTBw_E, LTB_Edash=dLTBw_E_dr)
+model_geodesics =  LTB_geodesics(R_spline=spR,Rdot_spline=spRdot,
+Rdash_spline=spRdash,Rdashdot_spline=spRdashdot,LTB_E=sp_E, LTB_Edash=sp_dEdr)
 
-#num_angles = 100 #20. #200 #200
+num_angles = 100 #20. #200 #200
 #angles = np.linspace(0.,0.995*np.pi,num=100,endpoint=True)
-##angles = np.concatenate( (np.linspace(0.,0.995*np.pi,num=10,endpoint=True), 
-##                        np.linspace(1.01*np.pi,2.*np.pi,num=10,endpoint=False)))
+angles = np.concatenate( (np.linspace(0.,0.995*np.pi,num=50,endpoint=True), 
+                        np.linspace(1.01*np.pi,2.*np.pi,num=50,endpoint=False)))
 
-#num_z_points = model_geodesics.num_pt 
-#geo_z_vec = model_geodesics.z_vec
+num_z_points = model_geodesics.num_pt 
+geo_z_vec = model_geodesics.z_vec
 
-#geo_affine_vec, geo_t_vec, geo_r_vec, geo_p_vec, geo_theta_vec = \
-                        #[np.zeros((num_angles,num_z_points)) for i in xrange(5)] 
+geo_affine_vec, geo_t_vec, geo_r_vec, geo_p_vec, geo_theta_vec = \
+                        [np.zeros((num_angles,num_z_points)) for i in xrange(5)] 
 
-#loc = 20
+loc = 30.*Mpc
 
 ##First for an on center observer calculate the time when redshift is 1100.
-#center_affine, center_t_vec, center_r_vec, \
-#center_p_vec, center_theta_vec = model_geodesics(rp=r_vector[0],tp=model_age,alpha=angles[-1])
-#sp_center_t = spline_1d(geo_z_vec,center_t_vec,s=0)
-#print "age at t(z=1100) for central observer is ", sp_center_t(1100.)
+center_affine, center_t_vec, center_r_vec, \
+center_p_vec, center_theta_vec = model_geodesics(rp=r_vector[0],tp=model_age,alpha=angles[-1])
+sp_center_t = spline_1d(geo_z_vec,center_t_vec,s=0)
+print "age at t(z=1100) for central observer is ", sp_center_t(1100.)
 
 ##serial version
 ##for i, angle in zip(xrange(num_angles),angles):
@@ -194,131 +187,72 @@ for r_val in r_vector:
 ##	geo_theta_vec[i,:] = LTB_geodesics_model0(rp=loc,tp=model_age,alpha=angle)
 
 ##parallel version 2
-#def geo_loop(angle):
-	#return model_geodesics(rp=loc,tp=model_age,alpha=angle)
+def geo_loop(angle):
+	return model_geodesics(rp=loc,tp=model_age,alpha=angle)
 
-#num_cores=7
-#geos = Parallel(n_jobs=num_cores,verbose=5)(
-#delayed(geo_loop)(angle=angle) for angle in angles)
+num_cores=7
+geos = Parallel(n_jobs=num_cores,verbose=5)(
+delayed(geo_loop)(angle=angle) for angle in angles)
 
-#i = 0
-#for geo_tuple in geos:
-	#geo_affine_vec[i,:], geo_t_vec[i,:], geo_r_vec[i,:], geo_p_vec[i,:], \
-	#geo_theta_vec[i,:] = geo_tuple
-	#i = i + 1
+i = 0
+for geo_tuple in geos:
+	geo_affine_vec[i,:], geo_t_vec[i,:], geo_r_vec[i,:], geo_p_vec[i,:], \
+	geo_theta_vec[i,:] = geo_tuple
+	i = i + 1
 
 ##finally make the 2d splines
-#sp_affine = spline_2d(angles,geo_z_vec,geo_affine_vec,s=0) 
-#sp_t_vec = spline_2d(angles,geo_z_vec,geo_t_vec,s=0)
-#sp_r_vec = spline_2d(angles,geo_z_vec,geo_r_vec,s=0)
-#sp_p_vec = spline_2d(angles,geo_z_vec,geo_p_vec,s=0)
-#sp_theta_vec = spline_2d(angles,geo_z_vec,geo_theta_vec,s=0)
+sp_affine = spline_2d(angles,geo_z_vec,geo_affine_vec,s=0) 
+sp_t_vec = spline_2d(angles,geo_z_vec,geo_t_vec,s=0)
+sp_r_vec = spline_2d(angles,geo_z_vec,geo_r_vec,s=0)
+sp_p_vec = spline_2d(angles,geo_z_vec,geo_p_vec,s=0)
+sp_theta_vec = spline_2d(angles,geo_z_vec,geo_theta_vec,s=0)
 
 
-#ras, dec = np.loadtxt("pixel_center_galactic_coord_12288.dat",unpack=True)
-#Rascension, declination, gammas = get_angles(ras, dec)
+ras, dec = np.loadtxt("pixel_center_galactic_coord_3072.dat",unpack=True)
+Rascension, declination, gammas = get_angles(ras, dec,ras_d = np.pi+51.7*np.pi/180., dec_d = -24.9*np.pi/180.)
 
 #z_of_gamma = np.empty_like(gammas)
-#z_star = 1100.
+z_star = 1100.
 ##age_central = sp_center_t(z_star)
-#age_central = sp_t_vec.ev(0.,z_star)
-#@Findroot
-#def z_at_tdec(z,gamma):
-	#return sp_t_vec.ev(gamma,z)/age_central - 1.
+age_central = sp_t_vec.ev(0.,z_star)
+@Findroot
+def z_at_tdec(z,gamma):
+	return sp_t_vec.ev(gamma,z)/age_central - 1.
 
-#z_at_tdec.set_options(xtol=1e-8,rtol=1e-8)
-#z_at_tdec.set_bounds(z_star-20.,z_star+20.) 
+z_at_tdec.set_options(xtol=1e-8,rtol=1e-8)
+z_at_tdec.set_bounds(z_star-20.,z_star+20.) 
 ##Because Job lib can not pickle z_at_tdec.root directly
-#def z_at_tdec_root(gamma):
-	#return z_at_tdec.root(gamma)
+def z_at_tdec_root(gamma):
+	return z_at_tdec.root(gamma)
 
-#z_of_angles = Parallel(n_jobs=num_cores,verbose=0)(delayed(z_at_tdec_root)(gamma) for gamma in angles)
-#z_of_angles = np.asarray(z_of_angles)
+z_of_angles = Parallel(n_jobs=num_cores,verbose=0)(delayed(z_at_tdec_root)(gamma) for gamma in angles)
+z_of_angles = np.asarray(z_of_angles)
 
-#z_of_angles_sp = spline_1d(angles,z_of_angles)
-#z_of_gamma = z_of_angles_sp(gammas) 
-##z_of_gamma = 1100. - (age_central-sp_t_vec.ev(gammas,1100.))/sp_t_vec.ev(gammas,1100.,dy=1)
+z_of_angles_sp = spline_1d(angles,z_of_angles)
+z_of_gamma = z_of_angles_sp(gammas) 
+#z_of_gamma = 1100. - (age_central-sp_t_vec.ev(gammas,1100.))/sp_t_vec.ev(gammas,1100.,dy=1)
 #np.savetxt("zw_of_gamma_1000.dat",z_of_gamma)
 
+z_of_gamma = 2.725*z_of_gamma
+my_map = (z_of_gamma.mean() - z_of_gamma)/(1.+z_of_gamma)
+#my_map = (hp.pixelfunc.fit_monopole(z_of_gamma) - z_of_gamma)/(1.+z_of_gamma)
+flip = 'astro' # 'geo'
+hp.mollview(map = my_map, title = "temp_map" ,
+flip = flip,format='%.4e') 
+hp.mollview(map = my_map, title = "temp_map" ,
+flip = flip, remove_mono=True,format='%.4e') 
+hp.mollview(map = my_map, title = "temp_map_no_dipole" ,
+flip = flip, remove_dip=True,format='%.4e')
+plt.show()
 
-#def lum_and_Ang_dist(gamma,z):
-	#"""
-	#The luminosity distance for an off center observer obtained from the angular 
-	#diameter distance. Assumes the splines have already been defined and are accessible.
-	#The gamma is the fixed angle.
-	#"""
-	#t = sp_t_vec.ev(gamma,z)
-	#r = sp_r_vec.ev(gamma,z)
-	#theta = sp_theta_vec.ev(gamma,z)
-	
-	#dr_dgamma = sp_r_vec.ev(gamma,z,dx=1)
-	#dtheta_dgamma = sp_theta_vec.ev(gamma,z,dx=1)
-	
-	#R = spR.ev(r,t)
-	#Rdash = spRdash.ev(r,t)
-	#E = LTBw_E(r)
-	
-	#DL4 = (1.+z)**8*R**4*np.sin(theta)**2/np.sin(gamma)**2 * ( 
-	      #Rdash**2/R**2/(1.+2.*E)*dr_dgamma**2 + dtheta_dgamma**2)
-	
-	#DL = DL4**0.25
-	#DA = DL/(1.+z)**2
-	#return DL4**0.25, DA
+print " alms for l 0 to 10"
+alms = hp.map2alm(my_map,mmax=10,lmax=10).real
+for i, alm in zip(xrange(alms.size),alms):
+	print "ell %i  alm %5e" %(i, alm)
 
-#def lum_dist(z,gamma,comp_dist):
-	#"""
-	#The luminosity distance for an off center observer obtained from the angular 
-	#diameter distance. Assumes the splines have already been defined and are accessible.
-	#The gamma is the fixed angle.
-	#"""
-	#t = sp_t_vec.ev(gamma,z)
-	
-	#r = sp_r_vec.ev(gamma,z)
-	#theta = sp_theta_vec.ev(gamma,z)
-	
-	#dr_dgamma = sp_r_vec.ev(gamma,z,dx=1)
-	#dtheta_dgamma = sp_theta_vec.ev(gamma,z,dx=1)
-	
-	#R = spR.ev(r,t)
-	#Rdash = spRdash.ev(r,t)
-	#E = LTBw_E(r)
-	
-	#DL4 = (1.+z)**8*R**4*np.sin(theta)**2/np.sin(gamma)**2 * ( 
-	      #Rdash**2/R**2/(1.+2.*E)*dr_dgamma**2 + dtheta_dgamma**2)
-	
-	#DL = DL4**0.25
-	
-	#return DL4**0.25 - comp_dist
+cls = hp.sphtfunc.anafast(my_map,lmax=10,pol=False)
+print "checking with C_l = abs(al0)^2/(2l+1)"
+ells = np.arange(cls.size)
+print np.sqrt(np.abs(cls) * (2.*ells +1.))
 
-#******************************************************************************
-#******************************************************************************
 
-#fig = plt.figure()
-#plt.plot(rw, dLTBw_M_dr(rw),label="dM_dr")
-##plt.xscale('log')
-##plt.yscale('symlog')
-#plt.legend(loc='best')
-#fig = plt.figure()
-##plt.plot(rw,LTBw_M(rw)/LTB_M(rw),label="M(r)")
-#plt.plot(rw,LTBw_M(rw),label="M(r)")
-#plt.legend(loc='best')
-#plt.yscale('log')
-#plt.xscale('log')
-#fig = plt.figure()
-#plt.plot(rw,dLTBw_M_dr(rw)*2/rw**2,label="rho(r)")
-#plt.xscale('log')
-#plt.legend(loc='best')
-#plt.show()
-#
-#
-#print "all done"
-#fig = plt.figure()
-#plt.plot(r_vector,E_vec,'g-')
-#fig = plt.figure()
-#plt.plot(r_vector,E_vec*r_vector**2,'r-')
-#plt.show()
-#
-#fig = plt.figure()
-##plt.plot(r_vector,dLTBw_E_dr(r_vector))
-#plt.plot(rw,dLTBw_E_dr(rw))
-#plt.show()
