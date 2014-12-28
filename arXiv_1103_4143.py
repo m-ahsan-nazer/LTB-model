@@ -9,8 +9,8 @@ import numpy as np
 from LTB_Sclass_v2 import LTB_ScaleFactor
 from LTB_Sclass_v2 import LTB_geodesics, sample_radial_coord
 from LTB_housekeeping import c, Mpc, Gpc, ageMpc
-from LTB_housekeeping import Findroot, Integrate, get_angles
-from GP_profiles import GP_MODEL
+from LTB_housekeeping import Findroot, Integrate
+from GP_profiles import GP_MODEL, get_GP_angles
 
 from scipy.interpolate import UnivariateSpline as spline_1d
 from scipy.interpolate import RectBivariateSpline as spline_2d
@@ -57,7 +57,7 @@ r_vec = sample_radial_coord(r0=test_GP.r0,delta_r=test_GP.delta_r,r_init=1e-10,
 #r_vector = sample_radial_coord(r0=r0,delta_r=delta_r,r_init=1e-4,r_max=20*1e3,num_pt1=100,num_pt2=100)
 size_r_vec = r_vec.size
 r_vector = sample_radial_coord(r0=test_GP.r0,delta_r=test_GP.delta_r,r_init=1e-4,
-                              r_max=15.*1e3,num_pt1=100,num_pt2=100)
+                              r_max=15.*1e3,num_pt1=100,num_pt2=100)#r_init=1e-4
 size_r_vector = r_vector.size
 
 M_GP    = test_GP.M(r_vec)
@@ -163,9 +163,9 @@ model_geodesics =  LTB_geodesics(R_spline=spR,Rdot_spline=spRdot,
 Rdash_spline=spRdash,Rdashdot_spline=spRdashdot,LTB_E=sp_E, LTB_Edash=sp_dEdr)
 
 num_angles = 100 #20. #200 #200
-#angles = np.linspace(0.,0.995*np.pi,num=100,endpoint=True)
-angles = np.concatenate( (np.linspace(0.,0.995*np.pi,num=50,endpoint=True), 
-                        np.linspace(1.01*np.pi,2.*np.pi,num=50,endpoint=False)))
+angles = np.linspace(0.,0.996*np.pi,num=100,endpoint=True)
+#angles = np.concatenate( (np.linspace(0.,0.995*np.pi,num=50,endpoint=True), 
+#                        np.linspace(1.01*np.pi,2.*np.pi,num=50,endpoint=False)))
 
 num_z_points = model_geodesics.num_pt 
 geo_z_vec = model_geodesics.z_vec
@@ -177,7 +177,7 @@ loc = 30.*Mpc
 
 ##First for an on center observer calculate the time when redshift is 1100.
 center_affine, center_t_vec, center_r_vec, \
-center_p_vec, center_theta_vec = model_geodesics(rp=r_vector[0],tp=model_age,alpha=angles[-1])
+center_p_vec, center_theta_vec = model_geodesics(rp=r_vector[0],tp=model_age,alpha=np.pi)#angles[-1]
 sp_center_t = spline_1d(geo_z_vec,center_t_vec,s=0)
 print "age at t(z=1100) for central observer is ", sp_center_t(1100.)
 
@@ -209,7 +209,7 @@ sp_theta_vec = spline_2d(angles,geo_z_vec,geo_theta_vec,s=0)
 
 
 ras, dec = np.loadtxt("pixel_center_galactic_coord_3072.dat",unpack=True)
-Rascension, declination, gammas = get_angles(ras, dec,ras_d = np.pi+51.7*np.pi/180., dec_d = -24.9*np.pi/180.)
+Rascension, declination, gammas = get_GP_angles(ell=ras, bee=dec,ell_d = 51.7, bee_d = -24.9)
 
 #z_of_gamma = np.empty_like(gammas)
 z_star = 1100.
@@ -233,7 +233,7 @@ z_of_gamma = z_of_angles_sp(gammas)
 #z_of_gamma = 1100. - (age_central-sp_t_vec.ev(gammas,1100.))/sp_t_vec.ev(gammas,1100.,dy=1)
 #np.savetxt("zw_of_gamma_1000.dat",z_of_gamma)
 
-z_of_gamma = 2.725*z_of_gamma
+#z_of_gamma = 2.725*z_of_gamma
 my_map = (z_of_gamma.mean() - z_of_gamma)/(1.+z_of_gamma)
 #my_map = (hp.pixelfunc.fit_monopole(z_of_gamma) - z_of_gamma)/(1.+z_of_gamma)
 flip = 'astro' # 'geo'

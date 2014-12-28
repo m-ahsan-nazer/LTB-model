@@ -133,4 +133,41 @@ class GP_MODEL():
 		return self.H0overc(r)**2*self.OmegaX(r)*3./8.
 	
 
+def get_GP_angles(ell,bee,ell_d = 264.14, bee_d = 48.26):
+	"""
+	For a fixed choice of coordinates of centre of the universe sets the 
+	angles along which the geodesics will be solved. Centre direction corresponds 
+	to the dipole axis hence d subscript for its declination and right ascension. 
+	The following relationships between right ascention, declination and 
+	theta, phi coordinates of the LTB model hold:
+	theta = pi/2- bee where -pi/2 <= bee <= pi/2
+	phi   = ell       where 0 <= ell < 2pi
+	theta:
+		is in degrees. And in physics convention 0 <= theta <= pi . 
+	phi:
+		is in degrees. And in physics convention 0 <= phi <= 2pi . 
+	gammas:
+	       the angle between the tangent vector to the geodesic and a unit 
+	       vector pointing from the observer to the void centre.
+	ell_d, bee_d:
+	      are the right ascension and declination of the void center i.e dipole
+	returns:
+	        dec, ras, gamma in radians
+	"""
+	#convert from galactic coordinates to spherical polar coordinates in radians
+	theta   = (90. - bee)*np.pi/180.
+	phi     = ell*np.pi/180.
+	theta_d = (90. - bee_d)*np.pi/180.
+	phi_d   = ell_d*np.pi/180.
+	#a general point is p = ( sin(theta)cos(phi), sin(theta)sin(phi), cos(theta))
+	#and the p_d = ( sin(theta_d)cos(phi_d), sin(theta_d)sin(phi_d), cos(theta_d))
+	#cos(gamma) = p_d dot p
+	#Let p = (px, py, pz), p_d = (px_d, py_d, pz_d)
+	px = np.sin(theta)*np.cos(phi); px_d = np.sin(theta_d)*np.cos(phi_d)
+	py = np.sin(theta)*np.sin(phi); py_d = np.sin(theta_d)*np.sin(phi_d)
+	pz = np.cos(theta)            ; pz_d = np.cos(theta_d)
+	
+	gamma = np.arccos(px*px_d + py*py_d + pz*pz_d)
+	
+	return  phi, theta, gamma 
 
