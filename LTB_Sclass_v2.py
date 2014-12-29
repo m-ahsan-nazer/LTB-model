@@ -391,7 +391,7 @@ class LTB_geodesics():
 		p0 = np.cos(alpha)*np.sqrt(1.+2*self.E(rp))/self.Rdash.ev(rp,tp); J = rp*np.sin(alpha)
 		y_init[0]=0.; y_init[1]=tp; y_init[2]=rp; y_init[3]=p0; y_init[4] = 0.
 		
-		#print "R(rp,tp) = ", self.R.ev(rp,tp), rp, tp
+		print "R(rp,tp) = ", self.R.ev(rp,tp), rp, tp, alpha, self.Rdash.ev(rp,tp)
 		#print "alpha, sign ", alpha, sign
 		z_init = 0.
 		#evolve_LTB_geodesic = ode(self.LTB_geodesic_derivs).set_integrator('vode', method='adams', with_jacobian=False,atol=atol, rtol=rtol)
@@ -401,12 +401,13 @@ class LTB_geodesics():
 		print "E, Edash, J ", self.E(rp), self.Edash(rp), J
 	
 		z_vec = self.z_vec # could just use self.z_vec itself
-		print "ding ", z_vec
+		print "ding "#, z_vec
 		
 		odeint_ans = odeint(func=self.LTB_geodesic_derivs_odeint,y0=y_init,t=z_vec,
 		args=(J,),Dfun=None,full_output=0,rtol=rtol,atol=atol)
 		#use odeint_ans, myfull_out  when setting full_output to True
-		
+		print  odeint_ans[-1,self.i_lambda],odeint_ans[-1,self.i_t], \
+		odeint_ans[-1,self.i_r], odeint_ans[-1,self.i_p], odeint_ans[-1,self.i_theta]
 		#self.i_lambda = 0; self.i_t = 1; self.i_r = 2; self.i_p = 3; self.i_theta = 4
 		return odeint_ans[:,self.i_lambda],odeint_ans[:,self.i_t], \
 		odeint_ans[:,self.i_r], odeint_ans[:,self.i_p], odeint_ans[:,self.i_theta]

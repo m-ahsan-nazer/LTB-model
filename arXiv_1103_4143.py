@@ -56,7 +56,7 @@ r_vec = sample_radial_coord(r0=test_GP.r0,delta_r=test_GP.delta_r,r_init=1e-10,
                             r_max=15.*1e3,num_pt1=1000,num_pt2=1000)
 #r_vector = sample_radial_coord(r0=r0,delta_r=delta_r,r_init=1e-4,r_max=20*1e3,num_pt1=100,num_pt2=100)
 size_r_vec = r_vec.size
-r_vector = sample_radial_coord(r0=test_GP.r0,delta_r=test_GP.delta_r,r_init=1e-4,
+r_vector = sample_radial_coord(r0=test_GP.r0,delta_r=test_GP.delta_r,r_init=1e-6,
                               r_max=15.*1e3,num_pt1=100,num_pt2=100)#r_init=1e-4
 size_r_vector = r_vector.size
 
@@ -110,11 +110,15 @@ def model_background(t,r):
 	       *cosh_t / sinh_t**(1./3.)
 	
 	# diff( R(t,r), r)
-	Rdash = -sp_dpdr(r)* sp_M(r)**(1./3.) * ( 
-	        6**(-2./3.)* sinh_t**(2./3.) /sp_p(r)**(4./3.) - \
-	        6**(-1./6.)* cosh_t * t / sinh_t**(1./3.) / sp_p(r)**(5./6.) \
-	        ) + \
-	        6**(-2./3.)*sinh_t**(2./3.)* sp_dMdr(r)/ (sp_M(r)**2 * sp_p(r))**(1./3.) 
+	#Rdash = -sp_dpdr(r)* sp_M(r)**(1./3.) * ( 
+	#        6**(-2./3.)* sinh_t**(2./3.) /sp_p(r)**(4./3.) - \
+	#        6**(-1./6.)* cosh_t * t / sinh_t**(1./3.) / sp_p(r)**(5./6.) \
+	#        ) + \
+	#        6**(-2./3.)*sinh_t**(2./3.)* sp_dMdr(r)/ (sp_M(r)**2 * sp_p(r))**(1./3.) 
+	Rdash = (0.75*np.sqrt(6.)*t*sinh_t*cosh_t - \
+	         0.75*sinh_t**2/sp_p(r)**0.5) * sp_dpdr(r)*sp_M(r)/sp_p(r)**1.5 + \
+	         0.75*sp_dMdr(r)*sinh_t**2/sp_p(r)
+	Rdash = Rdash/3./R**2
 	
 	# diff( R(t,r), t,r)
 	Rdashdot = 1./3./Rdot/R**2 *( ( 3.*R*Rdot**2 - 9.*sp_M(r) )*Rdash + \
@@ -150,21 +154,30 @@ for tup in r:
 t_vector = t_vec
 spR = spline_2d(r_vector,t_vector,R_vec,s=0)
 spRdot = spline_2d(r_vector,t_vector,Rdot_vec,s=0)
+i = 0
+for r_val in r_vector:
+	Rdash_vec[i,:] =  spR.ev(r_val,t_vector,dx=1,dy=0)
+	Rdashdot_vec[i,:] = spRdot.ev(r_val,t_vector,dx=1,dy=0)
+	i = i + 1
+
 spRdash = spline_2d(r_vector,t_vector,Rdash_vec,s=0)
 spRdashdot = spline_2d(r_vector,t_vector,Rdashdot_vec,s=0)
+
 
 print "A basic check on the Hubble expansion "
 for r_val in r_vector:
 	print "H(r,t0) ", r_val, sp_H(r_val), spRdot.ev(r_val,model_age)/spR.ev(r_val,model_age)
+	print "R(r,t0) ", r_val, spR.ev(r_val, model_age), spRdash.ev(r_val, model_age),spR.ev(r_val, model_age,dx=1,dy=0), model_background(model_age,r_val)[2]
 
 ################################################################################
 ##******************************************************************************
 model_geodesics =  LTB_geodesics(R_spline=spR,Rdot_spline=spRdot,
 Rdash_spline=spRdash,Rdashdot_spline=spRdashdot,LTB_E=sp_E, LTB_Edash=sp_dEdr)
 
-num_angles = 100 #20. #200 #200
-angles = np.linspace(0.,0.996*np.pi,num=100,endpoint=True)
-#angles = np.concatenate( (np.linspace(0.,0.995*np.pi,num=50,endpoint=True), 
+num_angles = 200#100 #200 #200
+angles = np.linspace(0.,0.996*np.pi,num=num_angles,endpoint=True)
+#angles = np.linspace(0.,0.999*np.pi,num=num_angles,endpoint=True)
+#angles = np.concatenate( (np.linspace(0.,0.996*np.pi,num=50,endpoint=True), 
 #                        np.linspace(1.01*np.pi,2.*np.pi,num=50,endpoint=False)))
 
 num_z_points = model_geodesics.num_pt 
@@ -173,11 +186,11 @@ geo_z_vec = model_geodesics.z_vec
 geo_affine_vec, geo_t_vec, geo_r_vec, geo_p_vec, geo_theta_vec = \
                         [np.zeros((num_angles,num_z_points)) for i in xrange(5)] 
 
-loc = 30.*Mpc
+loc = 30.*Mpc #654.*Mpc
 
 ##First for an on center observer calculate the time when redshift is 1100.
 center_affine, center_t_vec, center_r_vec, \
-center_p_vec, center_theta_vec = model_geodesics(rp=r_vector[0],tp=model_age,alpha=np.pi)#angles[-1]
+center_p_vec, center_theta_vec = model_geodesics(rp=r_vector[0],tp=model_age,alpha=0.*np.pi,atol=1e-12,rtol=1e-10)#angles[-1] atol=1e-10,rtol=1e-8
 sp_center_t = spline_1d(geo_z_vec,center_t_vec,s=0)
 print "age at t(z=1100) for central observer is ", sp_center_t(1100.)
 
@@ -188,7 +201,7 @@ print "age at t(z=1100) for central observer is ", sp_center_t(1100.)
 
 ##parallel version 2
 def geo_loop(angle):
-	return model_geodesics(rp=loc,tp=model_age,alpha=angle)
+	return model_geodesics(rp=loc,tp=model_age,alpha=angle,atol=1e-10,rtol=1e-8)#atol=1e-10,rtol=1e-8
 
 num_cores=7
 geos = Parallel(n_jobs=num_cores,verbose=5)(
@@ -208,18 +221,19 @@ sp_p_vec = spline_2d(angles,geo_z_vec,geo_p_vec,s=0)
 sp_theta_vec = spline_2d(angles,geo_z_vec,geo_theta_vec,s=0)
 
 
-ras, dec = np.loadtxt("pixel_center_galactic_coord_3072.dat",unpack=True)
+ras, dec = np.loadtxt("pixel_center_galactic_coord_12288.dat",unpack=True)
 Rascension, declination, gammas = get_GP_angles(ell=ras, bee=dec,ell_d = 51.7, bee_d = -24.9)
 
 #z_of_gamma = np.empty_like(gammas)
 z_star = 1100.
-##age_central = sp_center_t(z_star)
-age_central = sp_t_vec.ev(0.,z_star)
+age_central = sp_center_t(z_star)
+#age_central = sp_t_vec.ev(np.pi,z_star)
+print "age at t(0.,z=1100) for central observer is ", age_central
 @Findroot
 def z_at_tdec(z,gamma):
 	return sp_t_vec.ev(gamma,z)/age_central - 1.
 
-z_at_tdec.set_options(xtol=1e-8,rtol=1e-8)
+z_at_tdec.set_options(xtol=1e-8,rtol=1e-8)#(xtol=1e-8,rtol=1e-8)
 z_at_tdec.set_bounds(z_star-20.,z_star+20.) 
 ##Because Job lib can not pickle z_at_tdec.root directly
 def z_at_tdec_root(gamma):
@@ -231,11 +245,12 @@ z_of_angles = np.asarray(z_of_angles)
 z_of_angles_sp = spline_1d(angles,z_of_angles)
 z_of_gamma = z_of_angles_sp(gammas) 
 #z_of_gamma = 1100. - (age_central-sp_t_vec.ev(gammas,1100.))/sp_t_vec.ev(gammas,1100.,dy=1)
-#np.savetxt("zw_of_gamma_1000.dat",z_of_gamma)
+#np.savetxt("zGP_of_gamma_1000.dat",z_of_gamma)
+np.savetxt("zGP_of_gamma_1000.dat",zip(z_of_gamma,sp_t_vec.ev(gammas,z_of_gamma)))
 
 #z_of_gamma = 2.725*z_of_gamma
-my_map = (z_of_gamma.mean() - z_of_gamma)/(1.+z_of_gamma)
-#my_map = (hp.pixelfunc.fit_monopole(z_of_gamma) - z_of_gamma)/(1.+z_of_gamma)
+#my_map = (z_of_gamma.mean() - z_of_gamma)/(1.+z_of_gamma)
+my_map = (hp.pixelfunc.fit_monopole(z_of_gamma) - z_of_gamma)/(1.+z_of_gamma)
 flip = 'astro' # 'geo'
 hp.mollview(map = my_map, title = "temp_map" ,
 flip = flip,format='%.4e') 
@@ -246,13 +261,14 @@ flip = flip, remove_dip=True,format='%.4e')
 plt.show()
 
 print " alms for l 0 to 10"
-alms = hp.map2alm(my_map,mmax=10,lmax=10).real
+alms = hp.map2alm(my_map,mmax=2,lmax=2).real
 for i, alm in zip(xrange(alms.size),alms):
 	print "ell %i  alm %5e" %(i, alm)
 
-cls = hp.sphtfunc.anafast(my_map,lmax=10,pol=False)
+cls,alm = hp.sphtfunc.anafast(my_map,lmax=2,pol=False,alm=True)
 print "checking with C_l = abs(al0)^2/(2l+1)"
 ells = np.arange(cls.size)
 print np.sqrt(np.abs(cls) * (2.*ells +1.))
+print alm
 
 

@@ -76,8 +76,9 @@ class GP_MODEL():
 		"""
 		Eq. (2.28) in http://arxiv.org/abs/1103.4143
 		"""
-		return_me = self.OmegaX_out+(self.OmegaX_in-self.OmegaX_out)*(1. - 
-		np.tanh(0.5*(r-self.r0)/self.delta_r))/(1.+np.tanh(0.5*self.r0/self.delta_r))
+		return_me = 1. - self.OmegaM(r)
+		#return_me = self.OmegaX_out+(self.OmegaX_in-self.OmegaX_out)*(1. - 
+		#np.tanh(0.5*(r-self.r0)/self.delta_r))/(1.+np.tanh(0.5*self.r0/self.delta_r))
 		return return_me
 
 	def d_OmegaX_dr(self,r):
@@ -85,9 +86,10 @@ class GP_MODEL():
 		Evaluates partial derivative of OmegaX(r) w.r.t r
 		[d_Omega_M_dr]=Mpc^-1
 		"""
-		return_me = -(1./2.)*(self.OmegaX_in-self.OmegaX_out)*(1. - 
-		np.tanh((1./2.)*(r-self.r0)/self.delta_r)**2)/(self.delta_r*(1. + 
-		np.tanh((1./2.)*self.r0/self.delta_r)))
+		return_me = -self.d_OmegaM_dr(r)
+		#return_me = -(1./2.)*(self.OmegaX_in-self.OmegaX_out)*(1. - 
+		#np.tanh((1./2.)*(r-self.r0)/self.delta_r)**2)/(self.delta_r*(1. + 
+		#np.tanh((1./2.)*self.r0/self.delta_r)))
 		return return_me
 	
 	#def Integrand_H0overc(self,RoverR0,OmegaM,OmegaX,OmegaC):
@@ -99,6 +101,8 @@ class GP_MODEL():
 		OmegaM = self.OmegaM(r)
 		OmegaX = self.OmegaX(r)
 		OmegaC = 1. - OmegaM - OmegaX
+		OmegaC = 0.
+		#print "OmegaC is ", OmegaC
 		return np.sqrt(RoverR0) / np.sqrt(OmegaM + OmegaX*RoverR0**3 + OmegaC*RoverR0)
 
 	#def H0overc(self,OmegaM,OmegaX,OmegaC):
@@ -129,6 +133,7 @@ class GP_MODEL():
 		"""
 		OmegaX = (-8piG / 3) p/H0^2
 		return: Redefined p \equiv -pi G p
+		[-pi G p ] = Mpc^-2
 		"""
 		return self.H0overc(r)**2*self.OmegaX(r)*3./8.
 	
