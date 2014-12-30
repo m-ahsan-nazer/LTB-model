@@ -2,6 +2,7 @@
 ## Purpose is to check the code against the results obtained by 
 ## J. Grande and L. Perivolaropoulos 
 ## Phys. Rev. D. 84:023514, 2011 
+## Their mathematica code can be downloaded from http://leandros.physics.uoi.gr/ide/
 ################################################################################ 
 
 from __future__ import division
@@ -27,7 +28,7 @@ OmegaX_in = 0.699
 OmegaM_in = 1. - OmegaX_in
 test_GP = GP_MODEL(OmegaM_in=OmegaM_in,OmegaM_out=1., 
 	               OmegaX_in = OmegaX_in,OmegaX_out=0.,
-	               r0=3.37*Gpc,delta_r=0.35*Gpc,age=13.7*ageMpc)
+	               r0=3.37*Gpc,delta_r=0.35*Gpc,age=13.7*ageMpc)#r0=3.37*Gpc
 print test_GP.__doc__
 
 test_r_vals = np.array([0.,0.3,0.9,1.1,10.,2.e3,3.36e3,3.37e3,3.38e3,1e4])
@@ -53,11 +54,11 @@ print test_GP.H0overc(0.)
 # are solved.
 # r_vec has many more points than r_vector 
 r_vec = sample_radial_coord(r0=test_GP.r0,delta_r=test_GP.delta_r,r_init=1e-10,
-                            r_max=15.*1e3,num_pt1=1000,num_pt2=1000)
+                            r_max=15.*1e3,num_pt1=2000,num_pt2=2000)
 #r_vector = sample_radial_coord(r0=r0,delta_r=delta_r,r_init=1e-4,r_max=20*1e3,num_pt1=100,num_pt2=100)
 size_r_vec = r_vec.size
-r_vector = sample_radial_coord(r0=test_GP.r0,delta_r=test_GP.delta_r,r_init=1e-6,
-                              r_max=15.*1e3,num_pt1=100,num_pt2=100)#r_init=1e-4
+r_vector = sample_radial_coord(r0=test_GP.r0,delta_r=test_GP.delta_r,r_init=1e-5,
+                              r_max=15.*1e3,num_pt1=120,num_pt2=100)#r_init=1e-4
 size_r_vector = r_vector.size
 
 M_GP    = test_GP.M(r_vec)
@@ -174,8 +175,8 @@ for r_val in r_vector:
 model_geodesics =  LTB_geodesics(R_spline=spR,Rdot_spline=spRdot,
 Rdash_spline=spRdash,Rdashdot_spline=spRdashdot,LTB_E=sp_E, LTB_Edash=sp_dEdr)
 
-num_angles = 200#100 #200 #200
-angles = np.linspace(0.,0.996*np.pi,num=num_angles,endpoint=True)
+num_angles = 10 #100 #200
+angles = np.linspace(0.,0.999*np.pi,num=num_angles,endpoint=True)
 #angles = np.linspace(0.,0.999*np.pi,num=num_angles,endpoint=True)
 #angles = np.concatenate( (np.linspace(0.,0.996*np.pi,num=50,endpoint=True), 
 #                        np.linspace(1.01*np.pi,2.*np.pi,num=50,endpoint=False)))
@@ -186,7 +187,7 @@ geo_z_vec = model_geodesics.z_vec
 geo_affine_vec, geo_t_vec, geo_r_vec, geo_p_vec, geo_theta_vec = \
                         [np.zeros((num_angles,num_z_points)) for i in xrange(5)] 
 
-loc = 30.*Mpc #654.*Mpc
+loc = 30.*Mpc #30.*Mpc #654.*Mpc
 
 ##First for an on center observer calculate the time when redshift is 1100.
 center_affine, center_t_vec, center_r_vec, \
@@ -250,7 +251,16 @@ np.savetxt("zGP_of_gamma_1000.dat",zip(z_of_gamma,sp_t_vec.ev(gammas,z_of_gamma)
 
 #z_of_gamma = 2.725*z_of_gamma
 #my_map = (z_of_gamma.mean() - z_of_gamma)/(1.+z_of_gamma)
-my_map = (hp.pixelfunc.fit_monopole(z_of_gamma) - z_of_gamma)/(1.+z_of_gamma)
+#my_map = (hp.pixelfunc.fit_monopole(z_of_gamma) - z_of_gamma)/(1.+z_of_gamma)
+
+@Integrate
+def get_bar_z(gamma,robs):
+	return np.sin(gamma)/(1.+z_of_angles_sp(gamma))
+get_bar_z.set_options(epsabs=1.49e-16,epsrel=1.49e-12)
+get_bar_z.set_limits(0.,np.pi)
+my_map = ( (2./get_bar_z.integral(loc)-1.) - z_of_gamma)/(1.+z_of_gamma)
+print "bar_z Eq(2.47) ", 2./get_bar_z.integral(loc)-1., z_of_gamma.mean()
+
 flip = 'astro' # 'geo'
 hp.mollview(map = my_map, title = "temp_map" ,
 flip = flip,format='%.4e') 
@@ -260,15 +270,14 @@ hp.mollview(map = my_map, title = "temp_map_no_dipole" ,
 flip = flip, remove_dip=True,format='%.4e')
 plt.show()
 
-print " alms for l 0 to 10"
-alms = hp.map2alm(my_map,mmax=2,lmax=2).real
-for i, alm in zip(xrange(alms.size),alms):
-	print "ell %i  alm %5e" %(i, alm)
-
-cls,alm = hp.sphtfunc.anafast(my_map,lmax=2,pol=False,alm=True)
+cls,alm = hp.sphtfunc.anafast(my_map,mmax=0,lmax=10,pol=False,alm=True)
 print "checking with C_l = abs(al0)^2/(2l+1)"
 ells = np.arange(cls.size)
 print np.sqrt(np.abs(cls) * (2.*ells +1.))
-print alm
-
-
+print "double check with anafast"
+print 'alm ', alm
+print 'cls ', cls
+print "a third check with map2alm"
+alms = hp.map2alm(my_map,mmax=0,lmax=10).real
+for i, alm in zip(xrange(alms.size),alms):
+	print "ell %i  alm %5e" %(i, alm)
