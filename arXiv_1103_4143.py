@@ -99,6 +99,15 @@ model_age = test_GP.t0
 print "Lambda is ", Lambda, test_GP.OmegaX(0.), test_GP.OmegaX(300.)*3.*test_GP.H0overc(300.)**2, test_GP.OmegaX(3*Gpc)*3.*test_GP.H0overc(3*Gpc)**2
 
 def model_background(t,r):
+	"""
+	One can use the analytical form of R(t,r) to find all its derivatives.
+	However, diff(R(t,r),r) found from R(t,r) has problems with 
+	over and under flowing numbers. OmegaX(r) = 1 - OmegaM(r) seems to be 
+	the culprit. It is best to avoid calculating diff(R(t,r),r) and 
+	diff(R(t,r),t,r) here and instead use the spline interpolations to find 
+	them from R(t,r) and diff(R(t,r),t). The simplest check is that 
+	R(t0,r)=r and diff(R(t,r),r) at t=t0 should be unity. 
+	"""
 	sinh_t = np.sinh(np.sqrt(6.*sp_p(r)) * t)
 	if ( sp_p(r) < 0.):
 		print "is nan", r, sp_p(r)
@@ -116,10 +125,21 @@ def model_background(t,r):
 	#        6**(-1./6.)* cosh_t * t / sinh_t**(1./3.) / sp_p(r)**(5./6.) \
 	#        ) + \
 	#        6**(-2./3.)*sinh_t**(2./3.)* sp_dMdr(r)/ (sp_M(r)**2 * sp_p(r))**(1./3.) 
-	Rdash = (0.75*np.sqrt(6.)*t*sinh_t*cosh_t - \
-	         0.75*sinh_t**2/sp_p(r)**0.5) * sp_dpdr(r)*sp_M(r)/sp_p(r)**1.5 + \
-	         0.75*sp_dMdr(r)*sinh_t**2/sp_p(r)
-	Rdash = Rdash/3./R**2
+	####
+	#Rdash = (0.75*np.sqrt(6.)*t*sinh_t*cosh_t - \
+	#         0.75*sinh_t**2/sp_p(r)**0.5) * sp_dpdr(r)*sp_M(r)/sp_p(r)**1.5 + \
+	#         0.75*sp_dMdr(r)*sinh_t**2/sp_p(r)
+	#Rdash = Rdash/3./R**2
+	###
+	# A(t,r)=R(t,r)/r
+	Adash_over_A = \
+	np.tanh(np.sqrt(6.*sp_p(r)) * t)*t*( \
+	                sp_dHdr(r)*np.sqrt(test_GP.OmegaX(r)) + \
+	                sp_H(r)*test_GP.d_OmegaX_dr(r) / np.sqrt(test_GP.OmegaX(r))\
+	                  ) \
+	-test_GP.d_OmegaX_dr(r)/test_GP.OmegaX(r)/3. \
+	+test_GP.d_OmegaM_dr(r)/test_GP.OmegaM(r)/3.                   
+	Rdash = Adash_over_A*R + R/r
 	
 	# diff( R(t,r), t,r)
 	Rdashdot = 1./3./Rdot/R**2 *( ( 3.*R*Rdot**2 - 9.*sp_M(r) )*Rdash + \
@@ -168,7 +188,8 @@ spRdashdot = spline_2d(r_vector,t_vector,Rdashdot_vec,s=0)
 print "A basic check on the Hubble expansion "
 for r_val in r_vector:
 	print "H(r,t0) ", r_val, sp_H(r_val), spRdot.ev(r_val,model_age)/spR.ev(r_val,model_age)
-	print "R(r,t0) ", r_val, spR.ev(r_val, model_age), spRdash.ev(r_val, model_age),spR.ev(r_val, model_age,dx=1,dy=0), model_background(model_age,r_val)[2]
+	print "R(r,t0) ", r_val, spR.ev(r_val, model_age), spRdash.ev(r_val, model_age),spR.ev(r_val, model_age,dx=1,dy=0)
+	print "model_background ", model_background(model_age,r_val)
 
 ################################################################################
 ##******************************************************************************
