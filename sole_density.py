@@ -18,55 +18,36 @@ Mpc = 1.
 Gpc = 1e3*Mpc
 H_in = 0.73 #0.5-0.85 units km s^-1 Mpc^-1
 Hoverc_in = H_in*1e5/c #units of Mpc^-1
-H_out = 0.6 #0.7 #0.3-0.7 units km s^-1 Mpc^-1
+H_out = 0.673 #0.7 #0.3-0.7 units km s^-1 Mpc^-1
 Hoverc_out = H_out*1e5/c #units of Mpc^-1
-H_not = 0.6 #0.7 #0.5-0.95 units km s^-1 Mpc^-1
+H_not = 0.673 #0.7 #0.5-0.95 units km s^-1 Mpc^-1
 Hoverc_not = H_not*1e5/c #units of Mpc^-1
-Omega_in = 0.33 #0.05-0.35
 #if Lambda is nonzero check equations for correct units. [Lambda]=[R]^-2
 
-Omega_Lambda = 0.7 #0.9
+Omega_R0 = 4.1834e-5/H_out**2
+OmegaM_out = 0.315
+Omega_Lambda = 1. - OmegaM_out - Omega_R0 
 Lambda = Omega_Lambda * 3. * Hoverc_not**2
-Omega_out = .98 - Omega_Lambda
-r0 = 60./H_out #3.*Gpc  #2.5*Gpc #3.5 #0.33 #0.3-4.5 units Gpc
+
+r0 = 53./H_out #3.*Gpc  #2.5*Gpc #3.5 #0.33 #0.3-4.5 units Gpc
 delta_r = 15. #2.5 #0.2*r0 #5. #0.2*r0 # 0.1r0-0.9r0
-# r shall be in units of Mpc
-# As a point of reference in class the conformal age of 13894.100411 Mpc 
-# corresponds to age = 13.461693 Gyr
-# age = 15. billion years
-#     = 15. *10**9*(365.25*24.*60.*60.) s
-#     = 15. *10**9*(365.25*24.*60.*60.)* 299792458. m
-#     = 15. *10**9*(365.25*24.*60.*60.)* 299792458. *3.24077929*10**(-23) Mpc
-#     = 15. * 306.60139383811764 Mpc
-ageMpc = 306.60139383811764
+
 ###################
 #wiltshire notation
 # r0 = R = 20 to 60  (h^{-1] Mpc)
-delta_w = -0.95 #-0.95 to -1
+delta_w = -0.99 #-0.95 #-0.95 to -1
 #delta_r =  w = 2.5  , 5.,  10.,  15.
 # add subscript w to all quantities wiltshire
 ###################
 print "Omega_Lambda", Omega_Lambda, "Lambda ", Lambda
-print "Omega_out ", Omega_out, "H0 ", H_out
+print "OmegaM_out ", OmegaM_out, "H0 ", H_out
 
-#from GBH import GBH_MODEL
-#gbh =  GBH_MODEL(H_in=H_in,H_out=H_out,H_not=H_not,Lambda=Lambda,Omega_in=Omega_in,
-#	                  r0=r0,delta_r=delta_r)  
-
-#Omega_M      = gbh.Omega_M
-#d_Omega_M_dr = gbh.d_Omega_M_dr
-#H0overc      = gbh.H0overc
-#d_H0overc_dr = gbh.d_H0overc_dr 
-#LTB_M        = gbh.LTB_M
-#dLTB_M_dr    = gbh.dLTB_M_dr 
-#LTB_E        = gbh.LTB_E
-#dLTB_E_dr    = gbh.dLTB_E_dr
 
 def dLTBw_M_dr(r):
 	"""
 	[LTB_M] = Mpc
 	"""
-	return_me = 0.75*Omega_out*Hoverc_out**2*r**2 * (2.+delta_w - delta_w* 
+	return_me = 0.75*OmegaM_out*Hoverc_out**2*r**2 * (2.+delta_w - delta_w* 
 	                                                 np.tanh((r-r0)/delta_r))
 	return return_me
 
@@ -87,7 +68,7 @@ size_r_vector = 200
 spdLTBw_M_dr = spline_1d(rw, dLTBw_M_dr(rw), s=0) #dLTBw_M_dr(rw), s=0)
 spdLTBw_M_dr_int = spdLTBw_M_dr.antiderivative()
 Mw = spdLTBw_M_dr_int(rw) #- spdLTBw_M_dr_int(rw[0])
-model_age = 4282.74963782
+model_age = 13.7*ageMpc
 spMw = spline_1d(rw,Mw,s=0)
 
 def LTBw_M(r):
@@ -196,7 +177,7 @@ spRdashdot = spline_2d(r_vector,t_vector,Rdashdot_vec,s=0)
 print "checking that age is the same "
 for r_val in r_vector:
 	print "model age = ", model_age/ageMpc, "sp(r,age) ", sp.ev(r_val,model_age), "r ", r_val
-	print "H(r,t0) ", spRdot.ev(r_val,model_age)/spR.ev(r_val,model_age)
+	print "H(r,t0) in km /s/Mpc ", spRdot.ev(r_val,model_age)/spR.ev(r_val,model_age)*c/1e5, spRdash.ev(r_val,model_age) 
 
 ###############################################################################
 #******************************************************************************
@@ -214,11 +195,11 @@ geo_z_vec = model_geodesics.z_vec
 geo_affine_vec, geo_t_vec, geo_r_vec, geo_p_vec, geo_theta_vec = \
                         [np.zeros((num_angles,num_z_points)) for i in xrange(5)] 
 
-loc = 20
+loc = 40/H_out #20
 
 #First for an on center observer calculate the time when redshift is 1100.
 center_affine, center_t_vec, center_r_vec, \
-center_p_vec, center_theta_vec = model_geodesics(rp=r_vector[0],tp=model_age,alpha=angles[-1])
+center_p_vec, center_theta_vec = model_geodesics(rp=r_vector[0],tp=model_age,alpha=0.*angles[-1])
 sp_center_t = spline_1d(geo_z_vec,center_t_vec,s=0)
 print "age at t(z=1100) for central observer is ", sp_center_t(1100.)
 
@@ -250,7 +231,9 @@ sp_theta_vec = spline_2d(angles,geo_z_vec,geo_theta_vec,s=0)
 
 
 ras, dec = np.loadtxt("pixel_center_galactic_coord_12288.dat",unpack=True)
-Rascension, declination, gammas = get_angles(ras, dec)
+#Rascension, declination, gammas = get_angles(ras, dec)
+from GP_profiles import get_GP_angles
+Rascension, declination, gammas = get_GP_angles(ell=ras,bee=dec,ell_d = 96.4, bee_d = 29.3)
 
 z_of_gamma = np.empty_like(gammas)
 z_star = 1100.
@@ -273,7 +256,33 @@ z_of_angles_sp = spline_1d(angles,z_of_angles)
 z_of_gamma = z_of_angles_sp(gammas) 
 #z_of_gamma = 1100. - (age_central-sp_t_vec.ev(gammas,1100.))/sp_t_vec.ev(gammas,1100.,dy=1)
 np.savetxt("zw_of_gamma_1000.dat",z_of_gamma)
+my_map = (z_of_gamma.mean() - z_of_gamma)/(1.+z_of_gamma)
+import healpy as hp
+#############
+@Integrate
+def get_bar_z(gamma,robs):
+	return np.sin(gamma)/(1.+z_of_angles_sp(gamma))
+get_bar_z.set_options(epsabs=1.49e-16,epsrel=1.49e-12)
+get_bar_z.set_limits(0.,np.pi)
+#my_map = (hp.pixelfunc.fit_monopole(z_of_gamma) - z_of_gamma)/(1.+z_of_gamma)
+my_map = ( (2./get_bar_z.integral(loc)-1.) - z_of_gamma)/(1.+z_of_gamma)
+#############
 
+flip = 'astro' # 'geo'
+hp.mollview(map = my_map, title = "temp_map" ,
+flip = flip,format='%.4e')
+hp.mollview(map = my_map, title = "temp_map" ,
+flip = flip, remove_mono=True,format='%.4e')
+hp.mollview(map = my_map, title = "temp_map_no_dipole" ,
+flip = flip, remove_dip=True,format='%.4e')
+plt.show()
+
+cls,alm = hp.sphtfunc.anafast(my_map,mmax=0,lmax=10,pol=False,alm=True)
+print "checking with C_l = abs(al0)^2/(2l+1)"
+print 'alm ', alm
+print 'cls ', cls
+#import sys
+#sys.exit()
 
 def lum_and_Ang_dist(gamma,z):
 	"""
@@ -330,7 +339,7 @@ comp_cz, comp_d, comp_vpec, comp_sigv, comp_ell, comp_bee = np.loadtxt("COMPOSIT
 comp_ell_rad, comp_bee_rad, comp_gammas  = get_angles(comp_ell,comp_bee)
 
 wiltshire_model = open("wiltshire_model.dat",'w')
-wiltshire_model.write("cz [km/s]     dist [Mpc]   ell  bee \n")
+wiltshire_model.write("#cz [km/s]     dist [Mpc]   ell  bee \n")
 redshifts = np.zeros(len(comp_cz))
 
 from scipy.optimize import brentq
