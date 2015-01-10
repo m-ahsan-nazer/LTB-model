@@ -261,7 +261,7 @@ def z_at_tdec_root(gamma):
 z_of_angles = Parallel(n_jobs=num_cores,verbose=0)(delayed(z_at_tdec_root)(gamma) for gamma in angles)
 z_of_angles = np.asarray(z_of_angles)
 
-z_of_angles_sp = spline_1d(angles,z_of_angles)
+z_of_angles_sp = spline_1d(angles,z_of_angles,s=0)
 z_of_gamma = z_of_angles_sp(gammas) 
 #z_of_gamma = 1100. - (age_central-sp_t_vec.ev(gammas,1100.))/sp_t_vec.ev(gammas,1100.,dy=1)
 np.savetxt("zGP_of_gamma_1000.dat",zip(z_of_gamma,sp_t_vec.ev(gammas,z_of_gamma)))
