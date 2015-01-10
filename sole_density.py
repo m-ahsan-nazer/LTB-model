@@ -26,16 +26,16 @@ Hoverc_not = H_not*1e5/c #units of Mpc^-1
 
 Omega_R0 = 4.1834e-5/H_out**2
 OmegaM_out = 0.315
-Omega_Lambda = 1. - OmegaM_out - Omega_R0 
+Omega_Lambda = (1. - OmegaM_out - Omega_R0)*0.999 
 Lambda = Omega_Lambda * 3. * Hoverc_not**2
 
 r0 = 53./H_out #3.*Gpc  #2.5*Gpc #3.5 #0.33 #0.3-4.5 units Gpc
-delta_r = 15. #2.5 #0.2*r0 #5. #0.2*r0 # 0.1r0-0.9r0
+delta_r = 15./H_out #2.5 #0.2*r0 #5. #0.2*r0 # 0.1r0-0.9r0
 
 ###################
 #wiltshire notation
 # r0 = R = 20 to 60  (h^{-1] Mpc)
-delta_w = -0.99 #-0.95 #-0.95 to -1
+delta_w = -0.96 #-0.95 #-0.95 to -1
 #delta_r =  w = 2.5  , 5.,  10.,  15.
 # add subscript w to all quantities wiltshire
 ###################
@@ -68,7 +68,7 @@ size_r_vector = 200
 spdLTBw_M_dr = spline_1d(rw, dLTBw_M_dr(rw), s=0) #dLTBw_M_dr(rw), s=0)
 spdLTBw_M_dr_int = spdLTBw_M_dr.antiderivative()
 Mw = spdLTBw_M_dr_int(rw) #- spdLTBw_M_dr_int(rw[0])
-model_age = 13.7*ageMpc
+model_age = 13.819*ageMpc
 spMw = spline_1d(rw,Mw,s=0)
 
 def LTBw_M(r):
@@ -94,7 +94,7 @@ def LTB_2E_Eq(twoE_over_r3,twoM_over_r3,Lambda_over3):
  
 
 LTB_2E_Eq.set_options(xtol=4.4408920985006262e-16,rtol=4.4408920985006262e-15)
-LTB_2E_Eq.set_bounds(0.,1e-6) #(0,2.)
+LTB_2E_Eq.set_bounds(0.,1e-6)#(0.,1e-6) #(0,2.)
 
 E = np.zeros(len(r_vector))
 #serial loop
@@ -185,9 +185,9 @@ model_geodesics =  LTB_geodesics(R_spline=spR,Rdot_spline=spRdot,
 Rdash_spline=spRdash,Rdashdot_spline=spRdashdot,LTB_E=LTBw_E, LTB_Edash=dLTBw_E_dr)
 
 num_angles = 100 #20. #200 #200
-angles = np.linspace(0.,0.995*np.pi,num=100,endpoint=True)
-#angles = np.concatenate( (np.linspace(0.,0.995*np.pi,num=10,endpoint=True), 
-#                        np.linspace(1.01*np.pi,2.*np.pi,num=10,endpoint=False)))
+#angles = np.linspace(0.,0.995*np.pi,num=num_angles,endpoint=True)
+angles = np.concatenate( (np.linspace(0.,0.995*np.pi,num=int(num_angles/2),endpoint=True), 
+                        np.linspace(1.01*np.pi,2.*np.pi,num=int(num_angles/2),endpoint=False)))
 
 num_z_points = model_geodesics.num_pt 
 geo_z_vec = model_geodesics.z_vec
@@ -195,7 +195,7 @@ geo_z_vec = model_geodesics.z_vec
 geo_affine_vec, geo_t_vec, geo_r_vec, geo_p_vec, geo_theta_vec = \
                         [np.zeros((num_angles,num_z_points)) for i in xrange(5)] 
 
-loc = 40/H_out #20
+loc = 27.9/H_out#27./H_out#30/H_out#40/H_out #20
 
 #First for an on center observer calculate the time when redshift is 1100.
 center_affine, center_t_vec, center_r_vec, \
@@ -233,8 +233,11 @@ sp_theta_vec = spline_2d(angles,geo_z_vec,geo_theta_vec,s=0)
 ras, dec = np.loadtxt("pixel_center_galactic_coord_12288.dat",unpack=True)
 #Rascension, declination, gammas = get_angles(ras, dec)
 from GP_profiles import get_GP_angles
-Rascension, declination, gammas = get_GP_angles(ell=ras,bee=dec,ell_d = 96.4, bee_d = 29.3)
-
+#Rascension, declination, gammas = get_GP_angles(ell=ras,bee=dec,ell_d = 96.4, bee_d = -29.3)
+Rascension, declination, gammas = get_GP_angles(ell=ras,bee=dec,ell_d = 276.4, bee_d = 29.3)
+#cmb dipole direction
+#Rascension, declination, gammas = get_GP_angles(ell=ras,bee=dec,ell_d = 263.99, bee_d = 48.26)
+#Rascension, declination, gammas = get_GP_angles(ell=ras,bee=dec,ell_d = 0., bee_d = np.pi/2.)
 z_of_gamma = np.empty_like(gammas)
 z_star = 1100.
 #age_central = sp_center_t(z_star)
@@ -252,11 +255,11 @@ def z_at_tdec_root(gamma):
 z_of_angles = Parallel(n_jobs=num_cores,verbose=0)(delayed(z_at_tdec_root)(gamma) for gamma in angles)
 z_of_angles = np.asarray(z_of_angles)
 
-z_of_angles_sp = spline_1d(angles,z_of_angles)
+z_of_angles_sp = spline_1d(angles,z_of_angles,s=0)
 z_of_gamma = z_of_angles_sp(gammas) 
 #z_of_gamma = 1100. - (age_central-sp_t_vec.ev(gammas,1100.))/sp_t_vec.ev(gammas,1100.,dy=1)
 np.savetxt("zw_of_gamma_1000.dat",z_of_gamma)
-my_map = (z_of_gamma.mean() - z_of_gamma)/(1.+z_of_gamma)
+#my_map = (z_of_gamma.mean() - z_of_gamma)/(1.+z_of_gamma)
 import healpy as hp
 #############
 @Integrate
@@ -265,24 +268,67 @@ def get_bar_z(gamma,robs):
 get_bar_z.set_options(epsabs=1.49e-16,epsrel=1.49e-12)
 get_bar_z.set_limits(0.,np.pi)
 #my_map = (hp.pixelfunc.fit_monopole(z_of_gamma) - z_of_gamma)/(1.+z_of_gamma)
-my_map = ( (2./get_bar_z.integral(loc)-1.) - z_of_gamma)/(1.+z_of_gamma)
+my_map = 2.7255*( (2./get_bar_z.integral(loc)-1.) - z_of_gamma)/(1.+z_of_gamma)
 #############
+#using spherical harmonics decomposition
+############
+z_mean = 2./get_bar_z.integral(loc) - 1.
+def Delta_T(xi):
+	"""
+	0<= xi <= pi 
+	"""
+	return 2.7255*(z_mean - z_of_angles_sp(xi))/(1.+z_of_angles_sp(xi))
 
-flip = 'astro' # 'geo'
+from scipy.special import legendre as legendre
+
+@Integrate
+def al0(xi,ell):
+	"""
+	For m=0
+	Ylm = 1/2 sqrt((2l+1)/pi) LegendreP(l,x)
+	xi: angle in radians
+	Note: The integral over the other angle gives a factor of 2pi
+	"""
+	#LegPol = legendre(ell)
+	#return 2.*np.pi*Delta_T(xi)*np.sqrt((2.*ell+1.)/(4.*np.pi))*LegPol(np.cos(xi))*np.sin(xi)
+	ans = 0.
+	if (ell == 0):
+		ans = 2.*np.pi*Delta_T(xi)*np.sin(xi)*(1./ (2.*np.sqrt(np.pi)))
+	elif (ell == 1):
+		ans = 2.*np.pi*Delta_T(xi)*np.sin(xi)*(np.sqrt(3./np.pi)/2.*np.cos(xi))
+	else:
+		ans = 2.*np.pi*Delta_T(xi)*np.sin(xi)*(np.sqrt(5./np.pi)/4.*(3.*np.cos(xi)**2-1))
+	return ans
+al0.set_options(epsabs=1.49e-14,epsrel=1.49e-12)
+al0.set_limits(0.,np.pi)
+print "\n One has to be careful as to how the spherical harmonics are normalized"
+print "There are atleast three different ways adopted"
+print " now manually calculating alms , divided 4pi/(2l+1)"
+print "alm , l=0, m=0", al0.integral(0), al0.integral(0)/ np.sqrt(4*np.pi/1) 
+print "alm , l=1, m=0", al0.integral(1), al0.integral(1)/ np.sqrt(4*np.pi/3)
+print "alm , l=2, m=0", al0.integral(2), al0.integral(2)/ np.sqrt(4*np.pi/5)
+
+flip = 'geo' #'astro' # 'geo'
 hp.mollview(map = my_map, title = "temp_map" ,
 flip = flip,format='%.4e')
-hp.mollview(map = my_map, title = "temp_map" ,
+hp.mollview(map = my_map, title = "simulated dipole" ,
 flip = flip, remove_mono=True,format='%.4e')
-hp.mollview(map = my_map, title = "temp_map_no_dipole" ,
+hp.mollview(map = my_map, title = "Simulated quadrupole" ,
 flip = flip, remove_dip=True,format='%.4e')
 plt.show()
 
-cls,alm = hp.sphtfunc.anafast(my_map,mmax=0,lmax=10,pol=False,alm=True)
+#my_map = hp.remove_monopole(my_map)
+#cls,alm = hp.sphtfunc.anafast(my_map,mmax=10,lmax=10,pol=False,alm=True)
+cls,alm = hp.sphtfunc.anafast(my_map,pol=False,alm=True)
 print "checking with C_l = abs(al0)^2/(2l+1)"
 print 'alm ', alm
 print 'cls ', cls
-#import sys
-#sys.exit()
+cls,alm = hp.sphtfunc.anafast(my_map,pol=False,alm=True,lmax=10,mmax=0)
+print "once again"
+print 'alm ', alm
+print 'cls ', cls
+import sys
+sys.exit()
 
 def lum_and_Ang_dist(gamma,z):
 	"""
@@ -355,7 +401,24 @@ wiltshire_model.close()
 
 #******************************************************************************
 #******************************************************************************
-
+r_values = sample_radial_coord(r0=r0,delta_r=delta_r,r_init=1e-4,r_max=20*1e3,num_pt1=2000,num_pt2=2000)
+sole_density_f = open("sole_density_output.dat",'w')
+sole_density_f.write("r0[Mpc] %25.15e delta_r[Mpc] %25.15e delta_w[Mpc] %25.15e Lambda[Mpc^-2] %25.15e loc[Mpc] %25.15e\n" 
+                     %(r0, delta_r, delta_w,Lambda,loc) )
+sole_density_f.write(
+"#M(r)[Mpc]   dMdr   E(r)  dEdr(r)[Mpc^-1]   H(r)[km s^-1 Mpc^-1] \dot{R'}/R'[km s^-1 Mpc^-1]  OmegaM(r) OmegaE(r) rho/rho_0\n") 
+for r in r_values:
+	H_trans = spRdot.ev(r,model_age)/spR.ev(r,model_age)
+	H_long  = spRdashdot.ev(r,model_age)/spRdash.ev(r,model_age)
+	sole_density_f.write("%25.15e %25.15e %25.15e %25.15e %25.15e %25.15e %25.15e %25.15e %25.15e %25.15e\n" 
+	                      %(spMw(r),spdLTBw_M_dr(r),LTBw_E(r),dLTBw_E_dr(r),
+	                      H_trans*c/1e5, H_long*c/1e5,
+	                      2.*spMw(r)/(r**3*H_trans**2),
+	                      2.*LTBw_E(r)/(r**2*H_trans**2),
+	                      2./3.*spdLTBw_M_dr(r)/(r**2*OmegaM_out*Hoverc_out**2),
+	                      r)
+	                    )
+sole_density_f.close()
 #fig = plt.figure()
 #plt.plot(rw, dLTBw_M_dr(rw),label="dM_dr")
 ##plt.xscale('log')
