@@ -25,6 +25,11 @@
 ## This will result in errors in their work. See Figures7to10.nb of their
 ## mathematica code. The uncertainties they quote are certainly underestimated
 ## by a factor which could be as large as 10 in some cases.
+## NOTE: 
+# Set ell_d=0 and bee_d = 90 to get theta=0, phi=0
+# in get_GP_angles(ell=ras, bee=dec,ell_d = 51.7, bee_d = -24.9)
+## and the manual spherical harmonic decomposition agrees with Healpix 
+## because the change of coordinates is along the z-axis and gamma=xi=theta
 ## ************************************************************]
 ## notation r_obs == loc. 
 ## Best to redirect the output to a file
@@ -193,10 +198,15 @@ model_geodesics =  LTB_geodesics(R_spline=spR,Rdot_spline=spRdot,
 Rdash_spline=spRdash,Rdashdot_spline=spRdashdot,LTB_E=sp_E, LTB_Edash=sp_dEdr)
 
 num_angles = 100  #200 #100
-angles = np.linspace(0.,0.999*np.pi,num=num_angles,endpoint=True)
 #angles = np.linspace(0.,0.999*np.pi,num=num_angles,endpoint=True)
-#angles = np.concatenate( (np.linspace(0.,0.996*np.pi,num=50,endpoint=True), 
-#                        np.linspace(1.01*np.pi,2.*np.pi,num=50,endpoint=False)))
+#angles = np.linspace(0.,0.999*np.pi,num=num_angles,endpoint=True)
+## In principle only the range 0 to pi is required. However with angle set to pi 
+## the null ray is travelling radially inwards and hits the singularity at the void 
+## center. But because when taking spherical harmonics the angle pi appears in the 
+## interpolating integral, one can
+## just interpolate its value by going over the upper limit of pi.
+angles = np.concatenate( (np.linspace(0.,0.996*np.pi,num=int(num_angles/2),endpoint=True), 
+                        np.linspace(1.01*np.pi,2.*np.pi,num=int(num_angles/2),endpoint=False)))
 
 num_z_points = model_geodesics.num_pt 
 geo_z_vec = model_geodesics.z_vec
@@ -279,6 +289,41 @@ get_bar_z.set_options(epsabs=1.49e-16,epsrel=1.49e-12)
 get_bar_z.set_limits(0.,np.pi)
 my_map = ( (2./get_bar_z.integral(loc)-1.) - z_of_gamma)/(1.+z_of_gamma)
 print "bar_z Eq(2.47) ", 2./get_bar_z.integral(loc)-1., z_of_gamma.mean()
+
+#############
+#using spherical harmonics decomposition
+############
+z_mean = 2./get_bar_z.integral(loc) - 1.
+def Delta_T(xi):
+	"""
+	0<= xi <= pi 
+	"""
+	return 2.7255*(z_mean - z_of_angles_sp(xi))/(1.+z_of_angles_sp(xi))
+
+from scipy.special import legendre as legendre
+
+@Integrate
+def al0(xi,ell):
+	"""
+	For m=0
+	Ylm = 1/2 sqrt((2l+1)/pi) LegendreP(l,x)
+	xi: angle in radians
+	Note: The integral over the other angle gives a factor of 2pi.
+	While healpix does the spherical harmonic decomposition w.r.t spherical 
+	polar coordinates (theta,phi), this manual decomposition is w.r.t the 
+	angle (xi,phi) and xi is not theta.
+	"""
+	LegPol = legendre(ell)
+	return 2.*np.pi*Delta_T(xi)*np.sqrt((2.*ell+1.)/(4.*np.pi))*LegPol(np.cos(xi))*np.sin(xi)
+
+al0.set_options(epsabs=1.49e-10,epsrel=1.49e-8)
+al0.set_limits(0.,np.pi)
+print "\n One has to be careful as to how the spherical harmonics are normalized"
+print "There are atleast three different ways adopted in literature"
+print " now manually calculating alms , divide by 2.7255 to get dimensionless"
+print "alm , l=0, m=0", al0.integral(0), al0.integral(0)/2.7255
+print "alm , l=1, m=0", al0.integral(1), al0.integral(1)/2.7255
+print "alm , l=2, m=0", al0.integral(2), al0.integral(2)/2.7255
 
 flip = 'astro' # 'geo'
 hp.mollview(map = my_map, title = "temp_map" ,

@@ -233,6 +233,11 @@ sp_theta_vec = spline_2d(angles,geo_z_vec,geo_theta_vec,s=0)
 ras, dec = np.loadtxt("pixel_center_galactic_coord_12288.dat",unpack=True)
 #Rascension, declination, gammas = get_angles(ras, dec)
 from GP_profiles import get_GP_angles
+## NOTE: 
+# Set ell_d=0 and bee_d = 90 to get theta=0, phi=0
+# in get_GP_angles(ell=ras, bee=dec,ell_d = 51.7, bee_d = -24.9)
+## and the manual spherical harmonic decomposition agrees with Healpix 
+## because the change of coordinates is along the z-axis and gamma=xi=theta
 #Rascension, declination, gammas = get_GP_angles(ell=ras,bee=dec,ell_d = 96.4, bee_d = -29.3)
 Rascension, declination, gammas = get_GP_angles(ell=ras,bee=dec,ell_d = 276.4, bee_d = 29.3)
 #cmb dipole direction
@@ -288,6 +293,9 @@ def al0(xi,ell):
 	Ylm = 1/2 sqrt((2l+1)/pi) LegendreP(l,x)
 	xi: angle in radians
 	Note: The integral over the other angle gives a factor of 2pi
+	While healpix does the spherical harmonic decomposition w.r.t spherical 
+	polar coordinates (theta,phi), this manual decomposition is w.r.t the 
+	angle (xi,phi) and xi is not theta.
 	"""
 	#LegPol = legendre(ell)
 	#return 2.*np.pi*Delta_T(xi)*np.sqrt((2.*ell+1.)/(4.*np.pi))*LegPol(np.cos(xi))*np.sin(xi)
@@ -302,7 +310,7 @@ def al0(xi,ell):
 al0.set_options(epsabs=1.49e-14,epsrel=1.49e-12)
 al0.set_limits(0.,np.pi)
 print "\n One has to be careful as to how the spherical harmonics are normalized"
-print "There are atleast three different ways adopted"
+print "There are atleast three different ways adopted in literature"
 print " now manually calculating alms , divided 4pi/(2l+1)"
 print "alm , l=0, m=0", al0.integral(0), al0.integral(0)/ np.sqrt(4*np.pi/1) 
 print "alm , l=1, m=0", al0.integral(1), al0.integral(1)/ np.sqrt(4*np.pi/3)
@@ -327,6 +335,9 @@ cls,alm = hp.sphtfunc.anafast(my_map,pol=False,alm=True,lmax=10,mmax=0)
 print "once again"
 print 'alm ', alm
 print 'cls ', cls
+print "using map2alm"
+alm = hp.sphtfunc.map2alm(my_map,lmax=10,mmax=0,pol=False,use_weights=True)
+print alm
 import sys
 sys.exit()
 
