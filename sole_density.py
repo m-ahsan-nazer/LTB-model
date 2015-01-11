@@ -297,16 +297,9 @@ def al0(xi,ell):
 	polar coordinates (theta,phi), this manual decomposition is w.r.t the 
 	angle (xi,phi) and xi is not theta.
 	"""
-	#LegPol = legendre(ell)
-	#return 2.*np.pi*Delta_T(xi)*np.sqrt((2.*ell+1.)/(4.*np.pi))*LegPol(np.cos(xi))*np.sin(xi)
-	ans = 0.
-	if (ell == 0):
-		ans = 2.*np.pi*Delta_T(xi)*np.sin(xi)*(1./ (2.*np.sqrt(np.pi)))
-	elif (ell == 1):
-		ans = 2.*np.pi*Delta_T(xi)*np.sin(xi)*(np.sqrt(3./np.pi)/2.*np.cos(xi))
-	else:
-		ans = 2.*np.pi*Delta_T(xi)*np.sin(xi)*(np.sqrt(5./np.pi)/4.*(3.*np.cos(xi)**2-1))
-	return ans
+	LegPol = legendre(ell)
+	return 2.*np.pi*Delta_T(xi)*np.sqrt((2.*ell+1.)/(4.*np.pi))*LegPol(np.cos(xi))*np.sin(xi)
+
 al0.set_options(epsabs=1.49e-14,epsrel=1.49e-12)
 al0.set_limits(0.,np.pi)
 print "\n One has to be careful as to how the spherical harmonics are normalized"
