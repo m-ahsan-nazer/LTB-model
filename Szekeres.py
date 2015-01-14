@@ -2,12 +2,13 @@
 #from __future__ import division
 import numpy as np
 from scipy.integrate import ode, odeint
+from LTB_housekeeping import ageMpc
 
 
 class Szekeres_geodesics():
 	"""
-	Solves the geodesics for an off center observer Eq. (3.19)-(3.20) in 
-	``Structures in the Universe by Exact Method`` by Krzystof Bolejko etal.
+	Solves the Null geodesics in Szekeres model. The equations are solved w.r.t to 
+	the affine parameter ``s'' in units of Mpc but splined w.r.t to redshift.
 	"""
 	def __init__(self, R_spline,Rdot_spline,Rdash_spline,Rdashdot_spline,LTB_E, LTB_Edash,num_pt=1600, *args, **kwargs):
 		self.R         = R_spline
@@ -26,9 +27,10 @@ class Szekeres_geodesics():
 		self.z_vec = np.empty(num_pt)
 		self._set_z_vec()
 	
-	def _set_z_vec(self):
+	def _set_s_vec(self):
 		"""
-		vector of redshifts at which points the geodesics are saved
+		vector of affine parameter in units of Mega parsec at which points the 
+		geodesics are saved
 		"""
 		atleast = 100
 		atleast_tot = atleast*4+1200
@@ -37,40 +39,32 @@ class Szekeres_geodesics():
 			raise AssertionError("num_pt has to be an integer")		
 		elif self.num_pt < atleast_tot:
 			raise AssertionError("Senor I assume at least 1600 points distributed \
-			between z=0 and z=3000")
+			between s=0 and s=15.*306 Mega parsecs")
 		
 		bonus = self.num_pt - atleast_tot 
 		#insert the extra points between z=10 and 3000
-		z = np.linspace(0.,0.01,num=atleast,endpoint=False)
-		z = np.concatenate((z, np.linspace(0.01,0.1,num=atleast,endpoint=False)))
-		z = np.concatenate((z, np.linspace(0.1,1.,num=atleast,endpoint=False)))
-		z = np.concatenate((z, np.linspace(1.,10.,num=atleast,endpoint=False)))
-		z = np.concatenate((z, np.linspace(10.,3000.,
+		s = np.linspace(0.,0.01,num=atleast,endpoint=False)
+		s = np.concatenate((s, np.linspace(0.01,0.1,num=atleast,endpoint=False)))
+		s = np.concatenate((s, np.linspace(0.1,1.,num=atleast,endpoint=False)))
+		s = np.concatenate((s, np.linspace(1.,10.,num=atleast,endpoint=False)))
+		s = np.concatenate((s, np.linspace(10.,15.*ageMpc,
 		                    num=atleast_tot-4*atleast+bonus,endpoint=True)))
 		
-		self.z_vec = z
+		self.s_vec = s
 		return
 
-
+	def get_H_F_and_derivs(self,t,r,p,q, *args, **kwargs):
+		"""
+		"""
+		return
+	
 	def Szekeres_geodesic_derivs_odeint(self,y,t,J):
 		"""
-		Returns the derivatives w.r.t redshift ``tau``, [tau]=Mpc, for 
-		diff(t(tau),tau), diff(r(tau),tau), diff(t(tau),tau,tau) of Eq. (3.19)-(3.20) in 
-		``Structures in the Universe by Exact Method`` by Krzystof Bolejko etal.
-		Rps:
-		    denotes R_p * sin(alpha) = R_p(t_p, r_p) * sin(alpha)
-		ktp: 
-		    k^t_p which is set to 1 or -1 is the measured energy of the photon
-		    at the observer position. It is set to one because its magnitude does 
-		    not matter, only its fractional change matters.    
-		caution: 
-		        In general avoid alpha=pi/2 and 3/2*pi which means the light would
-		        be travelling perpendicular to the axis joining the observer and 
-		        the center of symmetry.
 		"""
-		dy_dt = np.empty_like(y)
+		t=y[0]; r=y[1]; p=y[2]; q=y[3]
 		
-		H, H_t, H_r, H_p, H_q, F, F_t, F_r, F_p, F_q = get_H_F_and_derivs()
+		H, H_t, H_r, H_p, H_q, F, F_t, F_r, F_p, F_q = \
+		self.get_H_F_and_derivs(t,r,p,q)
 		 
 		dt_ds = y[4]
 		dr_ds = y[5]
@@ -94,7 +88,8 @@ class Szekeres_geodesics():
 		ddp_dss = -ddp_dss
 		
 		dlnDA_ds = H_t/H+2.*F_t/F
-		return 
+		
+		return [dt_ds,dr_ds,dp_ds,dq_ds,ddt_dss,ddr_dss,ddp_dss,ddq_dss,dlnDA_ds]  
 			
 	def __call__(self,rp=45.,tp=0.92,alpha=np.pi/6.,atol=1e-12,rtol=1e-10):
 		y_init = np.zeros(5)
