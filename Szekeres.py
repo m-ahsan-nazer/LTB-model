@@ -56,14 +56,46 @@ class Szekeres_geodesics():
 	def get_H_F_and_derivs(self,t,r,p,q, *args, **kwargs):
 		"""
 		"""
-		return
+		R    = self.R.ev(r,t)
+		R_r  = self.R_r.ev(r,t)
+		R_t  = self.R_t.ev(r,t)
+		R_rr = self.R_rr.ev(r,t)
+		R_rt = self.R_rt.ev(r,t)
+		
+		P = self.P(r); P_r = self.P(r,nu=1); P_rr = self.P(r,nu=2)
+		Q = self.Q(r); Q_r = self.Q(r,nu=1); Q_rr = self.Q(r,nu=2)
+		S = self.S(r); S_r = self.S(r,nu=1); S_rr = self.S(r,nu=2)
+		
+		E = ((p**2 + q**2)/2. - P*p - Q*q + P**2/2. +Q**2/2. + S**2/2.)/S
+		E_p  = (p - P)/S
+		E_q  = (q - Q)/S
+		E_pr = -P_r/S + P/S**2*S_r
+		E_qr = -Q_q/S + Q/S**2*S_r
+		E_r  = -E*S_r/S + (-P_r*p - Q_r*q +P_r*P + Q_r*Q + S_r*S)/S
+		E_rr = (-P_rr*p - Q_rr*q + P_r**2 + P*P_rr + Q_r**2 + Q*Q_rr + \
+		        S_r**2 + S*S_rr - S_rr*E - 2.*S_r*E_r)/S
+		
+		H   = ((R_r - R)*E_r/E)/np.sqrt(1.-k)
+		H_p = (-R*E_pr/E + R*E_r*E_p/E**2)/np.sqrt(1-k)
+		H_q = (-R*E_qr/E + R*E_r*E_q/E**2)/np.sqrt(1-k)
+		H_r = (R_rr - R_r*E_r/E - R*E_rr/E + R*E_r**2)/np.sqrt(1.-k) + \
+		      H*k_r/(1-k)/2.
+		H_t = (R_rt - R_t*E_r/E)/np.sqrt(1-k)
+		
+		F   = R/E
+		F_p = -R*E_p/E**2
+		F_q = -R*E_q/E**2
+		F_r = (R_r/E - R*E_r/E**2)
+		F_t = R_t/E
+		
+		return (H, H_p, H_q, H_r, H_t,  F, F_p, F_q, F_r, F_t)
 	
 	def Szekeres_geodesic_derivs_odeint(self,y,t,J):
 		"""
 		"""
 		t=y[0]; r=y[1]; p=y[2]; q=y[3]
 		
-		H, H_t, H_r, H_p, H_q, F, F_t, F_r, F_p, F_q = \
+		H, H_p, H_q, H_r, H_t,  F, F_p, F_q, F_r, F_t  = \
 		self.get_H_F_and_derivs(t,r,p,q)
 		 
 		dt_ds = y[4]
