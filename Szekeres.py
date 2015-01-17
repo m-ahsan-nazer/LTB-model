@@ -10,22 +10,22 @@ class Szekeres_geodesics():
 	Solves the Null geodesics in Szekeres model. The equations are solved w.r.t to 
 	the affine parameter ``s'' in units of Mpc but splined w.r.t to redshift.
 	"""
-	def __init__(self, R_spline,Rdot_spline,Rdash_spline,Rdashdot_spline,LTB_E, LTB_Edash,num_pt=1600, *args, **kwargs):
-		self.R         = R_spline
-		self.Rdot      = Rdot_spline
-		self.Rdash     = Rdash_spline
-		self.Rdashdot  = Rdashdot_spline
+	def __init__(self, R,R_r,R_rr,R_rt,R_t,E, E_r 
+	             P,P_r,P_rr,Q,Q_r,Q_rr,S,S_r,S_rr,num_pt=1600, *args, **kwargs):
+		
+		self.R    = R;    self.R_r = R_r; self.R_rr = R_rr
+		self.R_rt = R_rt; self.R_t = R_t
+		self.E    = E;    self.E_r = E_r
+		self.P = P; self.P_r = P_r; self.P_rr = P_rr
+		self.Q = Q; self.Q_r = Q_r; self.Q_rr = Q_rr
+		self.S = S; self.S_r = S_r; self.S_rr = S_rr
+		
 		self.args      = args
 		self.kwargs    = kwargs
-		self.E         = LTB_E
-		self.Edash     = LTB_Edash
-		# i stands for integer index
-		self.i_lambda = 0; self.i_t = 1; self.i_r = 2; self.i_p = 3; self.i_theta = 4
-		#self.i_z = 0; self.i_t = 1; self.i_r = 2; self.i_p = 3; self.i_theta = 4
 		#setup the vector of redshifts
 		self.num_pt = num_pt
-		self.z_vec = np.empty(num_pt)
-		self._set_z_vec()
+		self.s_vec = np.empty(num_pt)
+		self._set_s_vec()
 	
 	def _set_s_vec(self):
 		"""
@@ -62,9 +62,12 @@ class Szekeres_geodesics():
 		R_rr = self.R_rr.ev(r,t)
 		R_rt = self.R_rt.ev(r,t)
 		
-		P = self.P(r); P_r = self.P(r,nu=1); P_rr = self.P(r,nu=2)
-		Q = self.Q(r); Q_r = self.Q(r,nu=1); Q_rr = self.Q(r,nu=2)
-		S = self.S(r); S_r = self.S(r,nu=1); S_rr = self.S(r,nu=2)
+		k   = -2.*self.E(r)
+		k_r = -2.*self.E_r(r)
+		
+		P = self.P(r); P_r = self.P_r(r); P_rr = self.P_rr(r)
+		Q = self.Q(r); Q_r = self.Q_r(r); Q_rr = self.Q_rr(r)
+		S = self.S(r); S_r = self.S_r(r); S_rr = self.S_rr(r)
 		
 		E = ((p**2 + q**2)/2. - P*p - Q*q + P**2/2. +Q**2/2. + S**2/2.)/S
 		E_p  = (p - P)/S
@@ -121,33 +124,30 @@ class Szekeres_geodesics():
 		
 		dlnDA_ds = H_t/H+2.*F_t/F
 		
-		return [dt_ds,dr_ds,dp_ds,dq_ds,ddt_dss,ddr_dss,ddp_dss,ddq_dss,dlnDA_ds]  
+		return (dt_ds,dr_ds,dp_ds,dq_ds,ddt_dss,ddr_dss,ddp_dss,ddq_dss,dlnDA_ds) 
 			
 	def __call__(self,rp=45.,tp=0.92,alpha=np.pi/6.,atol=1e-12,rtol=1e-10):
-		y_init = np.zeros(5)
-		p0 = np.cos(alpha)*np.sqrt(1.+2*self.E(rp))/self.Rdash.ev(rp,tp); J = rp*np.sin(alpha)
-		y_init[0]=0.; y_init[1]=tp; y_init[2]=rp; y_init[3]=p0; y_init[4] = 0.
+		"""
+		"""
+		y_init = np.zeros(9)
+		p0 = np.cos(alpha)*np.sqrt(1.+2*self.E(rp))/self.Rdash.ev(rp,tp)
+		J  = rp*np.sin(alpha)
+		# First try the LTB limit. Instead of the usual theta=0. set 
+		# theta = Pi/2. Thus for E=1 then S=1/2. Choose P(r)=Q(r)=0.
+		y_init[0]=tp; y_init[1]=rp; y_init[2]=np.cos(alpha)*self.S(r); 
+		y_init[3]=np.sin(alpha)*self.S(r); 
+		y_init[4]= p0
+		y_init[5]= 
+		y_init[6]=
+		y_init[7]=
+		y_init[8]=0.
 		
-		print "R(rp,tp) = ", self.R.ev(rp,tp), rp, tp, alpha, self.Rdash.ev(rp,tp)
-		#print "alpha, sign ", alpha, sign
-		z_init = 0.
-		#evolve_LTB_geodesic = ode(self.LTB_geodesic_derivs).set_integrator('vode', method='adams', with_jacobian=False,atol=atol, rtol=rtol)
-		#evolve_LTB_geodesic.set_initial_value(y_init, z_init).set_f_params(J)
-		print 'init_conds ', y_init, z_init, self.Rdash.ev(rp,tp), self.R.ev(rp,tp), 'loc ', rp
-		#print "and derivs ", self.LTB_geodesic_derivs(t=0.,y=y_init,J=J)
-		print "E, Edash, J ", self.E(rp), self.Edash(rp), J
-	
-		z_vec = self.z_vec # could just use self.z_vec itself
-		print "ding "#, z_vec
 		
-		odeint_ans = odeint(func=self.LTB_geodesic_derivs_odeint,y0=y_init,t=z_vec,
+		
+		odeint_ans = odeint(func=self.Szekeresgeodesic_derivs_odeint,y0=y_init,t=s_vec,
 		args=(J,),Dfun=None,full_output=0,rtol=rtol,atol=atol)
-		#use odeint_ans, myfull_out  when setting full_output to True
-		print  odeint_ans[-1,self.i_lambda],odeint_ans[-1,self.i_t], \
-		odeint_ans[-1,self.i_r], odeint_ans[-1,self.i_p], odeint_ans[-1,self.i_theta]
-		#self.i_lambda = 0; self.i_t = 1; self.i_r = 2; self.i_p = 3; self.i_theta = 4
-		return odeint_ans[:,self.i_lambda],odeint_ans[:,self.i_t], \
-		odeint_ans[:,self.i_r], odeint_ans[:,self.i_p], odeint_ans[:,self.i_theta]
+		
+		return [odeint_ans[:,i] for i in range(9)]
 
 
 
