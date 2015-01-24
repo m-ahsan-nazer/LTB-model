@@ -126,23 +126,49 @@ class Szekeres_geodesics():
 		
 		return (dt_ds,dr_ds,dp_ds,dq_ds,ddt_dss,ddr_dss,ddp_dss,ddq_dss,dlnDA_ds) 
 			
-	def __call__(self,rp=45.,tp=0.92,alpha=np.pi/6.,atol=1e-12,rtol=1e-10):
+	def __call__(self,r=45.,t=0.92,theta=np.pi/6.,phi=np.pi/6.,
+	             theta_s=np.pi/6.,phi_s=np.pi/6.,atol=1e-12,rtol=1e-10):
 		"""
 		"""
 		y_init = np.zeros(9)
-		p0 = np.cos(alpha)*np.sqrt(1.+2*self.E(rp))/self.Rdash.ev(rp,tp)
-		J  = rp*np.sin(alpha)
+		cos = np.cos
+		sin = np.sin
+		cot = np.cot
+		#p0 = np.cos(alpha)*np.sqrt(1.+2*self.E(rp))/self.Rdash.ev(rp,tp)
+		#J  = rp*np.sin(alpha)
 		# First try the LTB limit. Instead of the usual theta=0. set 
 		# theta = Pi/2. Thus for E=1 then S=1/2. Choose P(r)=Q(r)=0.
-		y_init[0]=tp; y_init[1]=rp; y_init[2]=np.cos(alpha)*self.S(r); 
-		y_init[3]=np.sin(alpha)*self.S(r); 
-		y_init[4]= p0
-		y_init[5]= 
-		y_init[6]=
-		y_init[7]=
-		y_init[8]=0.
+		p = cot(theta/2.)*cos(phi)*self.S(r)-self.P(r) 
+		q = cot(theta/2.)*sin(phi)*self.S(r)-self.Q(r) 
+		H, H_p, H_q, H_r, H_t,  F, F_p, F_q, F_r, F_t  = \
+		self.get_H_F_and_derivs(t,r,p,q)
 		
+		S = self.S(r); S_r = self.S_r(r);
+		P = self.P(r); P_r = self.P_r(r);
+		Q = self.Q(r); Q_r = self.Q_r(r);
 		
+		dt_ds = 1.
+		
+		A = H**2+F**2*((S_r*cot(0.5*theta)*cos(phi)+P_r)**2)+F**2*((S_r*cot(0.5*theta)*sin(phi)+Q_r)**2)
+		
+		B = 2.*F**2*(0.5*(S*(-1-cot(0.5*theta)**2)*theta_s*cos(phi))-S*cot(0.5*theta)*sin(phi)*phi_s)*(S_r*cot(0.5*theta)*cos(phi)+P_r)+2*F**2*(0.5*(S*(-1-cot(0.5*theta)**2)*theta_s*sin(phi))+S*cot(0.5*theta)*cos(phi)*phi_s)*(S_r*cot(0.5*theta)*sin(phi)+Q_r)
+		
+		C = -dt_ds**2+F**2*((0.5*(S*(-1-cot(0.5*theta)**2)*theta_s*cos(phi))-S*cot(0.5*theta)*sin(phi)*phi_s)**2)+F**2*((0.5*(S*(-1-cot(0.5*theta)**2)*theta_s*sin(phi))+S*cot(0.5*theta)*cos(phi)*phi_s)**2)
+		
+		dr_ds = (-B+np.sqrt(B**2 - 4.*A*C))/(2.*A)
+		
+		dp_ds = (S_r*cot(0.5*theta)*cos(phi)+P_r)*dr_ds+0.5*(S*(-1.-cot(0.5*theta)**2)*theta_s*cos(phi))-S*cot((1/2)*theta)*sin(phi)*phi_s
+		
+		dq_ds = (S_r*cot(0.5*theta)*sin(phi)+Q_r)*dr_ds+0.5*(S*(-1-cot(0.5*theta)**2)*theta_s*sin(phi))+S*cot((1/2)*theta)*cos(phi)*phi_s
+		
+		y_init[0]=t; y_init[1]=r; 
+		y_init[2]= p
+		y_init[3]= q
+		y_init[4]= dt_ds
+		y_init[5]= dr_ds
+		y_init[6]= dp_ds
+		y_init[7]= dq_ds
+		y_init[8]=0.		
 		
 		odeint_ans = odeint(func=self.Szekeresgeodesic_derivs_odeint,y0=y_init,t=s_vec,
 		args=(J,),Dfun=None,full_output=0,rtol=rtol,atol=atol)
