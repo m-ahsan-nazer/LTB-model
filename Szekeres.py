@@ -7,8 +7,9 @@ from LTB_housekeeping import ageMpc
 
 class Szekeres_geodesics():
 	"""
-	Solves the Null geodesics in Szekeres model. The equations are solved w.r.t to 
-	the affine parameter ``s'' in units of Mpc but splined w.r.t to redshift.
+	Solves the Null geodesics in Szekeres model with the metric in (t,r,p,q) 
+	coordinates in which the metric is diagonal. The equations are solved w.r.t to 
+	redshift. The angular diameter distance is included but is incorrect as of yet.
 	"""
 	def __init__(self, R,R_r,R_rr,R_rt,R_t,E, E_r, 
 	             P,P_r,P_rr,Q,Q_r,Q_rr,S,S_r,S_rr,num_pt=1600, *args, **kwargs):
@@ -31,8 +32,8 @@ class Szekeres_geodesics():
 		"""
 		vector of redshifts at which points the geodesics are saved
 		"""
-		atleast = 100
-		atleast_tot = atleast*5+1100 #atleast_tot = atleast*4+1200
+		atleast = 400
+		atleast_tot = atleast*6+1100 #atleast_tot = atleast*4+1200
 		
 		if not isinstance(self.num_pt, int):
 			raise AssertionError("num_pt has to be an integer")		
@@ -42,8 +43,10 @@ class Szekeres_geodesics():
 		
 		bonus = self.num_pt - atleast_tot 
 		#insert the extra points between z=10 and 3000
-		z = np.linspace(0.,1e-6,num=atleast,endpoint=False)
-		z = np.concatenate((z,np.linspace(1e-6,0.01,num=atleast,endpoint=False)))
+		z = np.linspace(0.,1e-8,num=atleast,endpoint=False)#1e-6
+		z = np.concatenate((z,np.linspace(1e-8,1e-5,num=atleast,endpoint=False)))
+		z = np.concatenate((z,np.linspace(1e-5,0.01,num=atleast,endpoint=False)))
+		#z = np.concatenate((z,np.linspace(1e-8,0.01,num=atleast,endpoint=False)))
 		#z = np.linspace(0.,0.01,num=atleast,endpoint=False)
 		z = np.concatenate((z, np.linspace(0.01,0.1,num=atleast,endpoint=False)))
 		z = np.concatenate((z, np.linspace(0.1,1.,num=atleast,endpoint=False)))
@@ -64,11 +67,14 @@ class Szekeres_geodesics():
 		a, b = Dir
 		
 		y_init[0]=t; y_init[1]=r; 
-		#y_init[2]=self.P(r)+self.S(r)*cot(theta/2.)*cos(phi)
-		#y_init[3]=self.Q(r)+self.S(r)*cot(theta/2.)*sin(phi)
+		#y_init[2]=self.P(r)+self.S(r)*tan(theta/2.)*cos(phi)
+		#y_init[3]=self.Q(r)+self.S(r)*tan(theta/2.)*sin(phi)
+		#y_init[2] = 1e5#0.#77.#3.
+		#y_init[3] = 1e5#0.#7.#7.
 		y_init[2]=self.P(r)+self.S(r)/tan(theta/2.)*cos(phi)
 		y_init[3]=self.Q(r)+self.S(r)/tan(theta/2.)*sin(phi)
-
+		#y_init[2]=self.P(r)+self.S(r)*(cos(theta/2.)/sin(theta/2.))*cos(phi)
+		#y_init[3]=self.Q(r)+self.S(r)*(cos(theta/2.)/sin(theta/2.))*sin(phi)
 		p = y_init[2]
 		q = y_init[3]
 		#a = a-theta
@@ -77,27 +83,36 @@ class Szekeres_geodesics():
 		cos_a = cos(a)
 		sin_b = sin(b)
 		cos_b = cos(b)
-		#if ( np.abs(sin_a) < 1.5e-16):
-		#	sin_a = 0.
-		#elif ( np.abs(cos_a) < 1.5e-16):
-		#	cos_a = 0.
-		#elif (np.abs(sin_b) < 1.5e-16):
-		#	sin_b = 0.
-		#elif (np.abs(cos_b) < 1.5e-16):
-		#	cos_b = 0.
+		
+		if ( np.abs(sin_a) < 1.5e-16):
+			sin_a = 0.
+		elif ( np.abs(cos_a) < 1.5e-16):
+			cos_a = 0.
+		elif (np.abs(sin_b) < 1.5e-16):
+			sin_b = 0.
+		elif (np.abs(cos_b) < 1.5e-16):
+			cos_b = 0.
+		
 		H, H_p, H_q, H_r, H_t,  F, F_p, F_q, F_r, F_t  = \
 		self.get_H_F_and_derivs(t,r,p,q)
 		
-		y_init[4] = -sin_a*cos_b/H
-		y_init[5] = sin_a*sin_b/F
-		y_init[6] = cos_a/F
+		dtheta_ds = sin_a*sin_b/F
+		dphi_ds   = cos_a/F
+		y_init[4] = sin_a*cos_b/H
+		y_init[5] = 0.5*(-1.-1./tan(theta/2.)**2)*dtheta_ds*cos(phi) \
+		            -sin(phi)/tan(theta/2.)*dphi_ds
+		y_init[6] = 0.5*(-1.-1./tan(theta/2.)**2)*dtheta_ds*sin(phi) \
+		            +cos(phi)/tan(theta/2.)*dphi_ds
+		#y_init[4] = sin_a*cos_b/H
+		#y_init[5] = sin_a*sin_b/F
+		#y_init[6] = cos_a/F
 		
 		
 		print "norm ", y_init[4]**2*H**2+ \
 		               F**2*(y_init[5]**2+y_init[6]**2)		
 		print "theta_dot, phi_dot, r_dot", y_init[5], y_init[6], y_init[4]
 		print "theta, a, phi, b", theta, a, phi, b
-		print "y_init ", y_init
+		print "y_init ", y_init, self.S(r)
 		y_init[7]=0.
 
 		#p0 = np.cos(alpha)*np.sqrt(1.+2*self.E(rp))/self.Rdash.ev(rp,tp)
@@ -119,6 +134,7 @@ class Szekeres_geodesics():
 	def get_H_F_and_derivs(self,t,r,p,q, *args, **kwargs):
 		"""
 		"""
+		r = np.abs(r)
 		R    = self.R.ev(r,t)
 		R_r  = self.R_r.ev(r,t)
 		R_t  = self.R_t.ev(r,t)
@@ -141,6 +157,14 @@ class Szekeres_geodesics():
 		E_r  = -E*S_r/S + (-P_r*p - Q_r*q +P_r*P + Q_r*Q + S_r*S)/S
 		E_rr = (-P_rr*p - Q_rr*q + P_r**2 + P*P_rr + Q_r**2 + Q*Q_rr + \
 		        S_r**2 + S*S_rr - S_rr*E - 2.*S_r*E_r)/S
+
+		#E = 1.
+		#E_p  = 0.
+		#E_q  = 0.
+		#E_pr = 0.
+		#E_qr = 0.
+		#E_r  = 0.
+		#E_rr = 0.
 		
 		H   = (R_r - R*E_r/E)/np.sqrt(1.-k)
 		H_p = (-R*E_pr/E + R*E_r*E_p/E**2)/np.sqrt(1-k)
@@ -166,12 +190,13 @@ class Szekeres_geodesics():
 		self.get_H_F_and_derivs(t,r,p,q)
 		
 		dt_ds = (1.+z) 
-		#dt_ds = y[4]
 		dr_ds = y[4]
 		dp_ds = y[5]
 		dq_ds = y[6]
+		#dt_ds = np.sqrt(H**2* dr_ds**2 + F**2* ( dp_ds**2 + dq_ds**2 ))
 		
-		ddt_dss = -H*H_t * dr_ds**2 - F*F_t* ( dp_ds**2 + dq_ds**2 )
+		#ddt_dss = -H*H_t * dr_ds**2 - F*F_t* ( dp_ds**2 + dq_ds**2 )
+		ddt_dss = -H*H_t * dr_ds**2 - F*F_t*dp_ds**2 - F*F_t* dq_ds**2
 		ds_dz = 1./ddt_dss
 
 		ddr_dss = -H_r/H * dr_ds**2 - 2.*H_p/H*dr_ds* (dp_ds + dq_ds) - \
@@ -197,7 +222,7 @@ class Szekeres_geodesics():
 		
 		return (dt_dz,dr_dz,dp_dz,dq_dz,ddr_dsz,ddp_dsz,ddq_dsz,dlnDA_dz) 
 			
-	def __call__(self,P_obs,Dir,atol=1e-15,rtol=1e-10):#atol=1e-15,rtol=1e-12):
+	def __call__(self,P_obs,Dir,atol=1e-15,rtol=1e-12):#atol=1e-15,rtol=1e-12):
 		"""
 		P_obs: tuple identifying the position of the observer 
 		       (t_obs, r_obs, theta_obs, phi_obs) 

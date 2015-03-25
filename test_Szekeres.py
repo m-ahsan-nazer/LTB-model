@@ -64,13 +64,13 @@ def dLTBw_M_dr(r):
 
 rw = sample_radial_coord(r0=r0,delta_r=delta_r,r_init=1e-10,r_max=20*1e3,num_pt1=1000,num_pt2=1000)
 
-r_vector = sample_radial_coord(r0=r0,delta_r=delta_r,r_init=1e-4,r_max=20*1e3,num_pt1=100,num_pt2=100)
+r_vector = sample_radial_coord(r0=r0,delta_r=delta_r,r_init=1e-6,r_max=20*1e3,num_pt1=100,num_pt2=100)
 size_r_vector = 200
 
 spdLTBw_M_dr = spline_1d(rw, dLTBw_M_dr(rw), s=0) #dLTBw_M_dr(rw), s=0)
 spdLTBw_M_dr_int = spdLTBw_M_dr.antiderivative()
 Mw = spdLTBw_M_dr_int(rw) #- spdLTBw_M_dr_int(rw[0])
-model_age = 13.819*ageMpc
+model_age = 13.*ageMpc#13.819*ageMpc
 spMw = spline_1d(rw,Mw,s=0)
 
 def LTBw_M(r):
@@ -183,64 +183,18 @@ for tup in ans:
 spRdashdash = spline_2d(r_vector,t_vector,Rdashdash_vec,s=0)
 #Tasks Assume S, P, Q and then find M via density equations
 #Find which bacground equations remain valid
-def dlnS_dr(r):
-	"""
-	Assume a relationship between rho_Sz and rho_LTB when matter inhomogeniety is 
-	maximal. For P(r)=Q(r)=0. we must have theta=0.
-	"""
-	Amp = 1e-5#1. #1e-3
-	delta_rho = Amp*np.exp(-0.5*(r-r0)**2/(r0)**2) #Amp*np.arctan(1./(r-r0))*(2./np.pi) #-1e-7 #1e-7..1e-10  and -1e-8..-1e-10
-	return delta_rho/(3.*LTBw_M(r)/dLTBw_M_dr(r)-(1.+delta_rho)*r)
-
-spdlnS_dr = spline_1d(rw, dlnS_dr(rw), s=0)
-spdlnS_dr_int = spdlnS_dr.antiderivative()
-lnS = spdlnS_dr_int(rw)
-splnS = spline_1d(rw,lnS,s=0)
-spS = spline_1d(rw,np.exp(lnS),s=0)
-spdSdr = spline_1d(rw,spS(rw,nu=1),s=0)
-spddSdrr = spline_1d(rw,spS(rw,nu=2),s=0)
-
-from matplotlib import pylab as plt
-plt.figure()
-plt.plot(rw,rw-3.*LTBw_M(rw)/dLTBw_M_dr(rw) )
-plt.xscale('log')
-plt.yscale('log')
-plt.figure()
-plt.plot(rw,3.*LTBw_M(rw)/dLTBw_M_dr(rw) )
-plt.xscale('log')
-plt.figure()
-plt.plot(rw,(rw*0.+(3.*LTBw_M(rw)/dLTBw_M_dr(rw)))/rw )
-plt.xscale('log')
-plt.yscale('log')
-plt.figure()
-plt.plot(rw,splnS(rw))
-plt.xscale('log')
-plt.figure()
-plt.plot(rw,spdlnS_dr(rw))
-plt.xscale('log')
-plt.figure()
-plt.plot(rw,spS(rw),'k.')
-plt.xscale('log')
-plt.yscale('log')
-plt.figure()
-plt.plot(rw,spdSdr(rw),'g.')
-plt.xscale('log')
-plt.figure()
-plt.plot(rw,spdSdr(rw)/spS(rw),'g.')
-plt.xscale('log')
-#plt.yscale('log')
-plt.show()
-#import sys
-#sys.exit()
-#rw = r_vector #rw[500:]
 def dS_dr_odeint(y,r):
-	Amp = 1e-5#1e-4#1e-5
-	delta_rho = Amp*(r-3.*LTBw_M(r)/dLTBw_M_dr(r))#Amp/r+Amp**4#Amp*np.exp(-0.5*(r-r0)**2/(50.*r0)**2)+0.*Amp**2#Amp*np.arctan(1./(r-r0)**2)*(2./np.pi) #1e-7..1e-10  and -1e-8..-1e-10
-	return delta_rho/(3.*LTBw_M(r)/dLTBw_M_dr(r)-(1.+delta_rho)*r)*y[0]
+#	Amp =3e-4#1e-6
+#	delta_rho = Amp*(-r+3.*LTBw_M(r)/dLTBw_M_dr(r))
+	Amp = 1e-8#3e-3
+	delta_rho = Amp*np.exp(-0.5*(r-10.*r0)**2/(r0)**2) 
+	return delta_rho/(-3.*LTBw_M(r)/dLTBw_M_dr(r)+(1.+delta_rho)*r)*y[0]
 def dS_dr_odeint_yarray(y,r):
-	Amp = 1e-5#1e-4#1e-5
-	delta_rho = Amp*(r-3.*LTBw_M(r)/dLTBw_M_dr(r))
-	return delta_rho/(3.*LTBw_M(r)/dLTBw_M_dr(r)-(1.+delta_rho)*r)*y
+#	Amp = 3e-4#1e-6#
+#	delta_rho = Amp*(-r+3.*LTBw_M(r)/dLTBw_M_dr(r))
+	Amp = 1e-8#3e-3
+	delta_rho = Amp*np.exp(-0.5*(r-10.*r0)**2/(r0)**2) 
+	return delta_rho/(-3.*LTBw_M(r)/dLTBw_M_dr(r)+(1.+delta_rho)*r)*y
 from scipy.integrate import ode, odeint
 odeint_ans = odeint(func=dS_dr_odeint,y0=1.,t=rw,args=(),
              Dfun=None,full_output=0,rtol=1e-10,atol=1e-15,mxstep=10**5)
@@ -250,34 +204,34 @@ spS = spline_1d(rw,odeint_ans[::,0],s=0)
 spdSdr = spline_1d(rw,dS_dr_odeint_yarray(odeint_ans[::,0],rw),s=0)
 spddSdrr = spline_1d(rw,spdSdr(rw,nu=1),s=0)
 
-from matplotlib import pylab as plt
-plt.figure()
-plt.plot(rw,rw-3.*LTBw_M(rw)/dLTBw_M_dr(rw) )
-plt.xscale('log')
-plt.yscale('log')
-plt.figure()
-plt.plot(rw,3.*LTBw_M(rw)/dLTBw_M_dr(rw) )
-plt.xscale('log')
-plt.figure()
-plt.plot(rw,(rw*0.+(3.*LTBw_M(rw)/dLTBw_M_dr(rw)))/rw )
-plt.xscale('log')
-plt.yscale('log')
-plt.figure()
-plt.plot(rw,splnS(rw))
-plt.xscale('log')
-plt.figure()
-plt.plot(rw,spdlnS_dr(rw))
-plt.xscale('log')
-plt.figure()
-plt.plot(rw,spS(rw),'k.')
-plt.xscale('log')
+#from matplotlib import pylab as plt
+#plt.figure()
+#plt.plot(rw,rw-3.*LTBw_M(rw)/dLTBw_M_dr(rw) )
+#plt.xscale('log')
 #plt.yscale('log')
-plt.figure()
-plt.plot(rw,spdSdr(rw),'g.')
-plt.xscale('log')
-plt.figure()
-plt.plot(rw,spdSdr(rw)/spS(rw),'g.')
-plt.xscale('log')
+#plt.figure()
+#plt.plot(rw,3.*LTBw_M(rw)/dLTBw_M_dr(rw) )
+#plt.xscale('log')
+#plt.figure()
+#plt.plot(rw,(rw*0.+(3.*LTBw_M(rw)/dLTBw_M_dr(rw)))/rw )
+#plt.xscale('log')
+#plt.yscale('log')
+#plt.figure()
+#plt.plot(rw,splnS(rw))
+#plt.xscale('log')
+#plt.figure()
+#plt.plot(rw,spdlnS_dr(rw))
+#plt.xscale('log')
+#plt.figure()
+#plt.plot(rw,spS(rw),'k.')
+#plt.xscale('log')
+#plt.yscale('log')
+#plt.figure()
+#plt.plot(rw,spdSdr(rw),'g.')
+#plt.xscale('log')
+#plt.figure()
+#plt.plot(rw,spdSdr(rw)/spS(rw),'g.')
+#plt.xscale('log')
 #plt.yscale('log')
 plt.show()
 print "checking that age is the same "
@@ -286,23 +240,23 @@ for r_val in r_vector:
 	print "H(r,t0) in km /s/Mpc ", spRdot.ev(r_val,model_age)/spR.ev(r_val,model_age)*c/1e5, spRdash.ev(r_val,model_age) 
 
 def S(r):
-	return spS(r)
+	return 1.*Gpc #+spS(r)*0.
 def dS_dr(r):
-	return spdSdr(r)
+	return 0. #spdSdr(r)*0.
 def ddS_drr(r):
-	return spddSdrr(r)
+	return 0. #spddSdrr(r)*0.
 def Q(r):
-	return 1.+spS(r)*0.
+	return 0. #1.*0.+spS(r)*0.
 def dQ_dr(r):
-	return 0.+spdSdr(r)*0.
+	return 0. #0.+spdSdr(r)*0.
 def ddQ_drr(r):
-	return 0.+spddSdrr(r)*0.
+	return 0. #0.+spddSdrr(r)*0.
 def P(r):
-	return 1.+spS(r)*0.
+	return 0. #1.*0.+spS(r)*0.
 def dP_dr(r):
-	return 0.+spdSdr(r)*0.
+	return 0. #0.+spdSdr(r)*0.
 def ddP_drr(r):
-	return 0.+spddSdrr(r)*0.
+	return 0. #0.+spddSdrr(r)*0.
 ###############################################################################
 #******************************************************************************
 #	def __init__(self, R,R_r,R_rr,R_rt,R_t,E, E_r 
@@ -311,13 +265,13 @@ model_geodesics = Szekeres_geodesics(spR,spRdash,spRdashdash,spRdashdot,spRdot,
                                      LTBw_E, dLTBw_E_dr,
                                      P,dP_dr,ddP_drr,
                                      Q,dQ_dr,ddQ_drr,
-                                     S,dS_dr,ddS_drr,num_pt=1600)
+                                     S,dS_dr,ddS_drr,num_pt=4000)#1600)
 
 #num_angles = 100 #20. #200 #200
 #angles = np.linspace(0.,0.995*np.pi,num=num_angles,endpoint=True)
 #angles = np.concatenate( (np.linspace(0.,0.995*np.pi,num=int(num_angles/2),endpoint=True), 
 #                        np.linspace(1.01*np.pi,2.*np.pi,num=int(num_angles/2),endpoint=False)))
-num_angles = hp.nside2npix(nside=2)
+#num_angles = int(hp.nside2npix(nside=2))
 #theta,phi = hp.pix2ang(nside=2,ipix=np.arange(num_angles))
 #theta = np.unique(theta)
 #theta = np.concatenate(([0.],theta))
@@ -329,10 +283,14 @@ num_angles = hp.nside2npix(nside=2)
 #        1.96349541,  2.35619449,  2.74889357,  3.14159265,  3.53429174,\
 #        3.92699082,  4.3196899 ,  4.71238898,276.4*np.pi/180.,  5.10508806,\
 #        5.49778714, 5.89048623])
-theta = np.linspace(0.,2*np.pi,12)
-phi = np.linspace(0.,2*np.pi,12)
+#theta = np.linspace(0.,np.pi,13,endpoint=True)#12) when a=pi/2, b=pi then caos
+#phi = np.linspace(0.,2.*np.pi,12,endpoint=False)#12)
+theta = np.linspace(0.,2.*np.pi,19,endpoint=True)#12)
+phi = np.linspace(0.,2.*np.pi,19,endpoint=False)#12)
+
 angles = [(a,b) for a in theta for b in phi]
-num_angles = np.size(angles)/2
+print "type np.size(angles)", type(np.size(angles))
+num_angles = int(np.size(angles)/2)
 num_z_points = model_geodesics.num_pt
 geo_z_vec = model_geodesics.z_vec 
 #geo_s_vec = model_geodesics.s_vec
@@ -349,10 +307,11 @@ loc = 27.9/H_out#27./H_out#30/H_out#40/H_out #20
 #              (np.pi/2.,276.4*np.pi/180.))#(29.3*np.pi/180.,276.4*np.pi/180.)) (np.pi/2.+29.3*np.pi/180.,276.4*np.pi/180.)
 ans_central = model_geodesics(
               [model_age,r_vector[0]+loc*0., (90.+29.3)*np.pi/180.,276.4*np.pi/180.],
-              (-7*np.pi/2.,276.4*np.pi/180.))#(29.3*np.pi/180.,276.4*np.pi/180.)) (np.pi/2.+29.3*np.pi/180.,276.4*np.pi/180.)
+              (np.pi/2.,np.pi))#(29.3*np.pi/180.,276.4*np.pi/180.)) (np.pi/2.+29.3*np.pi/180.,276.4*np.pi/180.)
               
 sp_center_t = spline_1d(geo_z_vec,ans_central[0][:],s=0)
-print "age at t(z=1100) for central observer is ", sp_center_t(1100.), sp_center_t(1100.)/ageMpc*1e4
+z_ls = 1090.
+print "age at t(z=z_ls) for central observer is ", sp_center_t(z_ls), sp_center_t(z_ls)/ageMpc*1e4
 print "t ", ans_central[0][:]
 print "r ", ans_central[1][:]
 r_cent = ans_central[1][:]
@@ -399,7 +358,7 @@ print "ang dist ", ans_central[7][:]
 #parallel version 2
 def geo_loop(angle):
 	return model_geodesics(
-	       [model_age,loc, np.pi/2.+0.*(90.+29.3)*np.pi/180.,276.4*np.pi/180.],
+	       [model_age,r_vector[0]*0.+loc, (90.+29.3)*np.pi/180.,276.4*np.pi/180.],
            angle)
 
 num_cores=7
@@ -412,13 +371,30 @@ print "asarray", np.shape(geos)
 geo_t, geo_r, geo_theta, geo_phi, geo_drds, geo_dthetads, geo_dphids, geo_DA = \
 [geos[:,i,:] for i in np.arange(8)]
 
+print "geo_t ", np.shape(geo_t)
+print geo_t
+print geo_t[:,-1]
+print geo_t[87,-1],geo_t[88,-1],geo_t[89,-1]
 z_dec, t_z1100, DA_dec = [np.empty(num_angles) for i in np.arange(3)]
+from matplotlib import pylab as plt
+for i in range(geo_t[:,0].size):
+	plt.plot(geo_z_vec,geo_t[i,:])
+	plt.yscale('log')
+	plt.yscale('log')
+plt.show()
+print "type angles", type(angles), np.shape(angles)
+for angle in angles:
+	print angle
+print "num_angles ",num_angles, type(num_angles)
 for i in np.arange(num_angles):
-	sp_z = spline_1d(-geo_t[i,:],geo_z_vec,s=0)
-	z_dec[i] = sp_z(-sp_center_t(1100.))
-	print "z_dec[i] ", z_dec[i]
+	#sp_z = spline_1d(-geo_t[i,:],geo_z_vec,s=0)
+	#z_dec[i] = sp_z(-sp_center_t(1100.))
+	sp_z = spline_1d(geo_t[i,::-1],geo_z_vec[::-1],s=0)
+	z_dec[i] = sp_z(sp_center_t(z_ls))
+	print type(i)
+	print "z_dec[i] ", z_dec[i], angles[i], i 
 	sp_t = spline_1d(geo_z_vec,geo_t[i,:],s=0)
-	t_z1100[i] = sp_t(1100.)
+	t_z1100[i] = sp_t(z_ls)
 	print "t_z1100[i] ", t_z1100[i]
 	sp_DA = spline_1d(geo_z_vec,geo_DA[i,:],s=0)
 	DA_dec[i] = sp_DA(z_dec[i])
