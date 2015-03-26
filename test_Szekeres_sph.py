@@ -217,23 +217,23 @@ for r_val in r_vector:
 	print spS(r_val), spdSdr(r_val), spddSdrr(r_val), r_val 
 
 def S(r):
-	return spS(r)
+	return 1. #spS(r)
 def dS_dr(r):
-	return spdSdr(r)
+	return 0. #spdSdr(r)
 def ddS_drr(r):
-	return spddSdrr(r)
+	return 0. #spddSdrr(r)
 def Q(r):
-	return spS(r)
+	return 1. #spS(r)
 def dQ_dr(r):
-	return spdSdr(r)
+	return 0. #spdSdr(r)
 def ddQ_drr(r):
-	return spddSdrr(r)
+	return 0. #spddSdrr(r)
 def P(r):
-	return spS(r)
+	return 0. #spS(r)
 def dP_dr(r):
-	return spdSdr(r)
+	return 0. #spdSdr(r)
 def ddP_drr(r):
-	return spddSdrr(r)
+	return 0. #spddSdrr(r)
 ###############################################################################
 #******************************************************************************
 #	def __init__(self, R,R_r,R_rr,R_rt,R_t,E, E_r 
@@ -254,21 +254,21 @@ model_geodesics = Szekeres_geodesics(spR,spRdash,spRdashdash,spRdashdot,spRdot,
 #theta = np.concatenate(([0.],theta))
 #theta = np.concatenate((theta,[np.pi]))
 #phi = np.unique(phi)
-theta = np.array([0.,0.41113786, 29.3*np.pi/180., 0.84106867,  1.23095942,
-                 1.57079633,  1.91063324,2.30052398,  2.73045479,np.pi])
+#theta = np.array([0.,0.41113786, 29.3*np.pi/180., 0.84106867,  1.23095942,
+#                 1.57079633,  1.91063324,2.30052398,  2.73045479,np.pi])
 #theta = np.concatenate((theta,np.array([3.53429174,\
 #        3.92699082,  4.3196899 ,  4.71238898,276.4*np.pi/180.,  5.10508806,\
 #        5.49778714, 5.89048623])))
-phi = np.array([ 0.        ,  0.39269908,  0.78539816,  1.17809725,  1.57079633,
-        1.96349541,  2.35619449,  2.74889357,  3.14159265,  3.53429174,\
-        3.92699082,  4.3196899 ,  4.71238898,276.4*np.pi/180.,  5.10508806,\
-        5.49778714, 5.89048623])
+#phi = np.array([ 0.        ,  0.39269908,  0.78539816,  1.17809725,  1.57079633,
+#        1.96349541,  2.35619449,  2.74889357,  3.14159265,  3.53429174,\
+#        3.92699082,  4.3196899 ,  4.71238898,276.4*np.pi/180.,  5.10508806,\
+#        5.49778714, 5.89048623])
 
 
 #theta = np.linspace(1e-5,0.999*2.*np.pi,9,endpoint=True)#12) when a=pi/2, b=pi then caos
 #phi = np.linspace(1e-5,0.999*2.*np.pi,11,endpoint=False)#12)
-#theta = np.linspace(0.,2.*np.pi,19,endpoint=True)#12)
-#phi = np.linspace(0.,2.*np.pi,19,endpoint=False)#12)
+theta = np.linspace(0.,2*np.pi,12)
+phi = np.linspace(0.,2*np.pi,13)
 
 angles = [(a,b) for a in theta for b in phi]
 print "type np.size(angles)", type(np.size(angles))
@@ -281,7 +281,7 @@ geo_z_vec = model_geodesics.z_vec
 #                        [np.zeros((num_angles,num_z_points)) for i in xrange(5)] 
 
 ans = [np.zeros((num_angles,num_z_points)) for i in xrange(8)]
-loc = 27.9/H_out#27./H_out#30/H_out#40/H_out #20
+loc = 40./H_out#27.9/H_out#27./H_out#30/H_out# #20
 
 #First for an on center observer calculate the time when redshift is 1100.
 ans_central = model_geodesics(

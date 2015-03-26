@@ -32,32 +32,8 @@ class Szekeres_geodesics():
 		"""
 		vector of redshifts at which points the geodesics are saved
 		"""
-#		atleast = 100
-#		atleast_tot = atleast*6+1100 #atleast_tot = atleast*4+1200
-#		
-#		if not isinstance(self.num_pt, int):
-#			raise AssertionError("num_pt has to be an integer")		
-#		elif self.num_pt < atleast_tot:
-#			raise AssertionError("Senor I assume at least 1600 points distributed \
-#			between z=0 and z=3000")
-#		
-#		bonus = self.num_pt - atleast_tot 
-#		#insert the extra points between z=10 and 3000
-#		z = np.linspace(0.,1e-8,num=atleast,endpoint=False)#1e-6
-#		z = np.concatenate((z,np.linspace(1e-8,1e-5,num=atleast,endpoint=False)))
-#		z = np.concatenate((z,np.linspace(1e-5,0.01,num=atleast,endpoint=False)))
-#		#z = np.concatenate((z,np.linspace(1e-8,0.01,num=atleast,endpoint=False)))
-#		#z = np.linspace(0.,0.01,num=atleast,endpoint=False)
-#		z = np.concatenate((z, np.linspace(0.01,0.1,num=atleast,endpoint=False)))
-#		z = np.concatenate((z, np.linspace(0.1,1.,num=atleast,endpoint=False)))
-#		z = np.concatenate((z, np.linspace(1.,10.,num=atleast,endpoint=False)))
-#		z = np.concatenate((z, np.linspace(10.,3000.,
-#		                    num=atleast_tot-4*atleast+bonus,endpoint=True)))#30000.
-#		#10.,3000.
-#		self.z_vec = z
-
 		atleast = 100
-		atleast_tot = atleast*5+1100 #atleast_tot = atleast*4+1200
+		atleast_tot = atleast*6+1100 #atleast_tot = atleast*4+1200
 		
 		if not isinstance(self.num_pt, int):
 			raise AssertionError("num_pt has to be an integer")		
@@ -67,16 +43,39 @@ class Szekeres_geodesics():
 		
 		bonus = self.num_pt - atleast_tot 
 		#insert the extra points between z=10 and 3000
-		z = np.linspace(0.,1e-6,num=atleast,endpoint=False)
-		z = np.concatenate((z,np.linspace(1e-6,0.01,num=atleast,endpoint=False)))
-		#z = np.linspace(0.,0.01,num=atleast,endpoint=False)
+		z = np.linspace(0.,1e-8,num=atleast,endpoint=False)#1e-6
+		z = np.concatenate((z,np.linspace(1e-8,1e-5,num=atleast,endpoint=False)))
+		z = np.concatenate((z,np.linspace(1e-5,0.01,num=atleast,endpoint=False)))
 		z = np.concatenate((z, np.linspace(0.01,0.1,num=atleast,endpoint=False)))
 		z = np.concatenate((z, np.linspace(0.1,1.,num=atleast,endpoint=False)))
 		z = np.concatenate((z, np.linspace(1.,10.,num=atleast,endpoint=False)))
-		z = np.concatenate((z, np.linspace(10.,3000.,
-		                    num=atleast_tot-4*atleast+bonus,endpoint=True)))
+		#z = np.linspace(0.,10.,num=atleast,endpoint=False)
+		z = np.concatenate((z, np.linspace(10.,1200.,
+		                    num=self.num_pt-6*atleast,endpoint=True)))#30000.
 		#10.,3000.
 		self.z_vec = z
+
+#		atleast = 100
+#		atleast_tot = atleast*5+1100 #atleast_tot = atleast*4+1200
+#		
+#		if not isinstance(self.num_pt, int):
+#			raise AssertionError("num_pt has to be an integer")		
+#		elif self.num_pt < atleast_tot:
+#			raise AssertionError("Senor I assume at least 1600 points distributed \
+#			between z=0 and z=3000")
+#		
+#		bonus = self.num_pt - atleast_tot 
+#		#insert the extra points between z=10 and 3000
+#		z = np.linspace(0.,1e-6,num=atleast,endpoint=False)
+#		z = np.concatenate((z,np.linspace(1e-6,0.01,num=atleast,endpoint=False)))
+#		#z = np.linspace(0.,0.01,num=atleast,endpoint=False)
+#		z = np.concatenate((z, np.linspace(0.01,0.1,num=atleast,endpoint=False)))
+#		z = np.concatenate((z, np.linspace(0.1,1.,num=atleast,endpoint=False)))
+#		z = np.concatenate((z, np.linspace(1.,10.,num=atleast,endpoint=False)))
+#		z = np.concatenate((z, np.linspace(10.,1200.,
+#		                    num=atleast_tot-4*atleast+bonus,endpoint=True)))#3000
+#		#10.,3000.
+#		self.z_vec = z
 		return
 
 	def get_init_conds(self,P_obs,Dir,*args,**kwargs):
@@ -91,7 +90,7 @@ class Szekeres_geodesics():
 		y_init[0]=t; y_init[1]=r; 
 		y_init[2]=theta
 		y_init[3]=phi
-
+		b = b-phi
 		sin_a = sin(a)
 		cos_a = cos(a)
 		sin_b = sin(b)
@@ -123,14 +122,20 @@ class Szekeres_geodesics():
 		
 		dtheta_ds = sin_a*sin_b/np.sqrt(F)
 		dphi_ds   = cos_a/np.sqrt(G)
-		dr_ds = (-2.*(B*dphi_ds + C*dtheta_ds)+\
-		          np.sqrt((2.*B*dphi_ds+2.*C*dphi_ds)**2\
-		         -4.*A*(F*dtheta_ds**2 + G*dphi_ds**2 - 1.)))/(2.*A)
+		#dtheta_ds = cos_a*sin_b/np.sqrt(F)
+		#dphi_ds   = sin_a*sin_b/np.sqrt(G)
+		#dr_ds = (-2.*(B*dphi_ds + C*dtheta_ds)+\
+		#          np.sqrt((2.*B*dphi_ds+2.*C*dphi_ds)**2\
+		#         -4.*A*(F*dtheta_ds**2 + G*dphi_ds**2 - 1.)))/(2.*A)
 		#dr_ds = -np.abs(dr_ds)
 		#dr_ds = -1./A*(B*dphi_ds + C*dtheta_ds - np.sqrt(-A*F*dtheta_ds**2\
 		#        -A*G*dphi_ds**2 + B**2*dphi_ds**2 + 2.*B*C*dphi_ds*dtheta_ds\
 		#        +C**2*dtheta_ds**2 + A))
 		#dr_ds = -np.abs(dr_ds)
+		#dr_ds = (-2.*(B*dphi_ds + C*dtheta_ds)+\
+		#          np.sqrt((2.*B*dphi_ds+2.*C*dphi_ds)**2\
+		#         +4.*A*sin_a**2*cos_b**2))/(2.*A)
+		dr_ds = -sin_a*cos_b/np.sqrt(A)
 		if (dtheta_ds == 0. and dphi_ds == 0.):
 			dr_ds = -1.
 		if (np.isnan(dr_ds)):
@@ -299,15 +304,12 @@ class Szekeres_geodesics():
 		       -(B_phi - G_r/2.)*dphi_ds**2
 		
 		ddr_dss = (r_eq - C/F*theta_eq - B/G*phi_eq)/(A - C**2/F - B**2/G)
-		ddr_dss = ddr_dss
 		ddr_dsz = ddr_dss*ds_dz
 		
 		ddtheta_dss = -C*ddr_dss/F + theta_eq/F
-		ddtheta_dss = ddtheta_dss 
 		ddtheta_dsz = ddtheta_dss*ds_dz
 		
 		ddphi_dss = -B*ddr_dss/G +phi_eq/G
-		ddphi_dss = ddphi_dss 
 		ddphi_dsz = ddphi_dss*ds_dz
 		
 		dlnDA_ds = 1.
